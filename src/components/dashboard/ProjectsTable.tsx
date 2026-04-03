@@ -1,0 +1,192 @@
+import React from 'react';
+import { Project, ProjectStatus, BuildType, CustomerStatus } from '../../types';
+import { Table, StatusDropdown, Dropdown } from '../ui';
+import { PillDropdown, buildTypeOptions, customerStatusOptions } from '../ui/PillDropdown';
+import { ContactActions } from '../ui/ContactActions';
+import { useData } from '../../context/DataContext';
+import { projectStatuses } from '../../constants/statuses';
+
+interface ProjectsTableProps {
+  projects: Project[];
+  onCustomerClick: (customerId: string) => void;
+}
+
+export const ProjectsTable: React.FC<ProjectsTableProps> = ({
+  projects,
+  onCustomerClick,
+}) => {
+  const { getCustomerById, getSalespersonById, updateProject, updateCustomer, salespeople, getActivitiesByProjectId } = useData();
+
+  const statusOptions = projectStatuses.map(s => ({
+    value: s.id,
+    label: s.label,
+  }));
+
+  const salespersonOptions = salespeople.map(sp => ({
+    value: sp.id,
+    label: sp.name,
+  }));
+
+  // Calculate days in status
+  const getDaysInStatus = (project: Project): number => {
+    const statusDate = project.statusChangedAt ? new Date(project.statusChangedAt) : new Date(project.createdAt);
+    return Math.floor((Date.now() - statusDate.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  // Get last contacted info
+  const getLastContacted = (project: Project): { text: string; days: number } => {
+    // First check the project's lastContacted field
+    if (project.lastContacted) {
+      const days = Math.floor((Date.now() - new Date(project.lastContacted).getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        text: days === 0 ? 'Today' : days === 1 ? 'Yesterday' : `${days} days ago`,
+        days,
+      };
+    }
+
+    // Fall back to activity log
+    const activities = getActivitiesByProjectId(project.id);
+    const lastContact = activities
+      .filter(a => ['message_outbound', 'message_inbound'].includes(a.type))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+    if (!lastContact) {
+      return { text: 'No contact', days: -1 };
+    }
+
+    const days = Math.floor((Date.now() - new Date(lastContact.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+    return {
+      text: days === 0 ? 'Today' : days === 1 ? 'Yesterday' : `${days} days ago`,
+      days,
+    };
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200">
+      <Table<Project>
+        columns={[
+          {
+            key: 'name',
+            header: 'Customer',
+            render: (project) => {
+              const customer = getCustomerById(project.customerId);
+              return (
+                <div className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                  {customer?.name}
+                </div>
+              );
+            },
+          },
+          { key: 'address', header: 'Address' },
+          {
+            key: 'buildType',
+            header: 'Build Type',
+            render: (project) => (
+              <div onClick={(e) => e.stopPropagation()}>
+                <PillDropdown
+                  options={buildTypeOptions}
+                  value={project.buildType || 'new_build'}
+                  onChange={(value) => updateProject(project.id, { buildType: value as BuildType })}
+                />
+              </div>
+            ),
+          },
+          {
+            key: 'customerStatus',
+            header: 'Customer Status',
+            render: (project) => {
+              const customer = getCustomerById(project.customerId);
+              return (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <PillDropdown
+                    options={customerStatusOptions}
+                    value={customer?.status || 'lead'}
+                    onChange={(value) => {
+                      if (customer) {
+                        updateCustomer(customer.id, { status: value as CustomerStatus });
+                      }
+                    }}
+                  />
+                </div>
+              );
+            },
+          },
+          {
+            key: 'status',
+            header: 'Project Status',
+            render: (project) => (
+              <div onClick={(e) => e.stopPropagation()}>
+                <StatusDropdown
+                  value={project.status}
+                  options={statusOptions}
+                  onChange={(value) => updateProject(project.id, { status: value as ProjectStatus })}
+                />
+              </div>
+            ),
+          },
+          {
+            key: 'salesperson',
+            header: 'Salesperson',
+            render: (project) => (
+              <div onClick={(e) => e.stopPropagation()} style={{ minWidth: '140px' }}>
+                <Dropdown
+                  options={salespersonOptions}
+                  value={project.salespersonId || ''}
+                  onChange={(value) => updateProject(project.id, { salespersonId: value })}
+                  placeholder="Assign..."
+                />
+              </div>
+            ),
+          },
+          {
+            key: 'daysInStatus',
+            header: 'Days in Status',
+            render: (project) => {
+              const days = getDaysInStatus(project);
+              return (
+                <div className="text-center">
+                  <span className={days > 7 ? 'text-orange-600 font-medium' : 'text-gray-600'}>
+                    {days}
+                  </span>
+                </div>
+              );
+            },
+          },
+          {
+            key: 'lastContacted',
+            header: 'Last Contacted',
+            render: (project) => {
+              const { text, days } = getLastContacted(project);
+              return (
+                <span className={days > 3 ? 'text-red-600 font-medium' : days === -1 ? 'text-gray-400' : 'text-gray-600'}>
+                  {text}
+                </span>
+              );
+            },
+          },
+          {
+            key: 'contact',
+            header: 'Contact',
+            render: (project) => {
+              const customer = getCustomerById(project.customerId);
+              if (!customer) return null;
+              return (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ContactActions
+                    phone={customer.phone}
+                    email={customer.email}
+                    customerName={customer.name}
+                    size="sm"
+                  />
+                </div>
+              );
+            },
+          },
+        ]}
+        data={projects}
+        onRowClick={(project) => onCustomerClick(project.customerId)}
+        emptyMessage="No projects found"
+      />
+    </div>
+  );
+};
