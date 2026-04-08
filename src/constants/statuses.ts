@@ -4,6 +4,7 @@ export interface CustomerStatusInfo {
   id: CustomerStatus;
   label: string;
   color: 'yellow' | 'green' | 'blue' | 'orange' | 'red' | 'purple' | 'gray';
+  sortOrder: number;
 }
 
 export interface ProjectStatusInfo {
@@ -11,59 +12,54 @@ export interface ProjectStatusInfo {
   label: string;
   phase: 'pre_sale' | 'post_sale';
   color: 'yellow' | 'green' | 'blue' | 'orange' | 'red' | 'purple' | 'gray';
+  sortOrder: number;
 }
 
-// Customer statuses (simple: Lead, Active, Complete)
+// Customer statuses (Lead Status - pre-sale journey)
+// New statuses for the updated workflow
 export const customerStatuses: CustomerStatusInfo[] = [
-  { id: 'lead', label: 'Lead', color: 'blue' },
-  { id: 'needs_qualifying', label: 'Needs Qualifying', color: 'yellow' },
-  { id: 'unqualified_lead', label: 'Unqualified Lead', color: 'red' },
-  { id: 'active', label: 'Active', color: 'green' },
-  { id: 'complete', label: 'Complete', color: 'gray' },
+  { id: 'new_lead', label: 'New Lead', color: 'gray', sortOrder: 1 },
+  { id: 'contact_attempted', label: 'Contact Attempted', color: 'yellow', sortOrder: 2 },
+  { id: 'contacted', label: 'Contacted', color: 'blue', sortOrder: 3 },
+  { id: 'repair_scheduled', label: 'Repair Scheduled', color: 'purple', sortOrder: 4 },
+  { id: 'quote_scheduled', label: 'Quote Scheduled', color: 'purple', sortOrder: 5 },
+  { id: 'building_proposal', label: 'Building Proposal', color: 'yellow', sortOrder: 6 },
+  { id: 'proposal_sent', label: 'Proposal Sent', color: 'orange', sortOrder: 7 },
+  { id: 'awaiting_deposit', label: 'Awaiting Deposit', color: 'orange', sortOrder: 8 },
+  { id: 'won', label: 'Won', color: 'green', sortOrder: 9 },
+  { id: 'lost', label: 'Lost', color: 'red', sortOrder: 10 },
+  // Legacy statuses for backward compatibility
+  { id: 'lead', label: 'Lead', color: 'blue', sortOrder: 100 },
+  { id: 'needs_qualifying', label: 'Needs Qualifying', color: 'yellow', sortOrder: 101 },
+  { id: 'unqualified_lead', label: 'Unqualified Lead', color: 'red', sortOrder: 102 },
+  { id: 'active', label: 'Active', color: 'green', sortOrder: 103 },
+  { id: 'complete', label: 'Complete', color: 'gray', sortOrder: 104 },
 ];
 
 export const getCustomerStatusInfo = (statusId: CustomerStatus): CustomerStatusInfo | undefined => {
   return customerStatuses.find(s => s.id === statusId);
 };
 
-// Project statuses (detailed workflow)
-// Colors by category: Sales=yellow, Permits=green, Materials=orange, Scheduling=purple, Installation=blue, CloseOut=gray
+// Project statuses (Post-Sale only - projects begin after sale is won)
 export const projectStatuses: ProjectStatusInfo[] = [
-  // Sales (yellow)
-  { id: 'new_lead', label: 'Schedule Quote', phase: 'pre_sale', color: 'yellow' },
-  { id: 'quote_scheduled', label: 'Quote Scheduled', phase: 'pre_sale', color: 'yellow' },
-  { id: 'building_proposal', label: 'Building Proposal', phase: 'pre_sale', color: 'yellow' },
-  { id: 'proposal_sent', label: 'Proposal Sent', phase: 'pre_sale', color: 'yellow' },
-  { id: 'awaiting_deposit', label: 'Awaiting Deposit', phase: 'pre_sale', color: 'yellow' },
-  { id: 'lost', label: 'Lost', phase: 'pre_sale', color: 'red' },
-  { id: 'quote_expired', label: 'Quote Expired', phase: 'pre_sale', color: 'yellow' },
-
-  // Permits (green)
-  { id: 'permit_preparation', label: 'Permit Preparation', phase: 'post_sale', color: 'green' },
-  { id: 'customer_docs_needed', label: 'Customer Docs Needed', phase: 'post_sale', color: 'green' },
-  { id: 'permit_submitted', label: 'Permit Submitted', phase: 'post_sale', color: 'green' },
-  { id: 'permit_revision_needed', label: 'Permit Revision Needed', phase: 'post_sale', color: 'green' },
-  { id: 'permit_resubmitted', label: 'Permit Resubmitted', phase: 'post_sale', color: 'green' },
-
-  // Materials (orange)
-  { id: 'ready_to_order_materials', label: 'Ready to Order Materials', phase: 'post_sale', color: 'orange' },
-  { id: 'materials_ordered', label: 'Materials Ordered', phase: 'post_sale', color: 'orange' },
-
-  // Scheduling (purple)
-  { id: 'scheduling_installation', label: 'Scheduling Installation', phase: 'post_sale', color: 'purple' },
-  { id: 'installation_scheduled', label: 'Installation Scheduled', phase: 'post_sale', color: 'purple' },
-  { id: 'installation_delayed', label: 'Installation Delayed', phase: 'post_sale', color: 'purple' },
-
-  // Installation (blue)
-  { id: 'installation_in_progress', label: 'Installation in Progress', phase: 'post_sale', color: 'blue' },
-  { id: 'scheduling_walkthrough', label: 'Scheduling Walkthrough', phase: 'post_sale', color: 'blue' },
-  { id: 'walkthrough_scheduled', label: 'Walkthrough Scheduled', phase: 'post_sale', color: 'blue' },
-
-  // Close Out (gray)
-  { id: 'fixes_needed', label: 'Fixes Needed', phase: 'post_sale', color: 'gray' },
-  { id: 'final_payment_due', label: 'Final Payment Due', phase: 'post_sale', color: 'gray' },
-  { id: 'requesting_review', label: 'Requesting Review', phase: 'post_sale', color: 'gray' },
-  { id: 'complete', label: 'Complete', phase: 'post_sale', color: 'gray' },
+  { id: 'not_started', label: 'Not Started', phase: 'post_sale', color: 'gray', sortOrder: 1 },
+  { id: 'permit_preparation', label: 'Permit Preparation', phase: 'post_sale', color: 'green', sortOrder: 2 },
+  { id: 'customer_docs_needed', label: 'Customer Docs Needed', phase: 'post_sale', color: 'orange', sortOrder: 3 },
+  { id: 'permit_submitted', label: 'Permit Submitted', phase: 'post_sale', color: 'green', sortOrder: 4 },
+  { id: 'permit_revision_needed', label: 'Permit Revision Needed', phase: 'post_sale', color: 'orange', sortOrder: 5 },
+  { id: 'permit_resubmitted', label: 'Permit Resubmitted', phase: 'post_sale', color: 'green', sortOrder: 6 },
+  { id: 'ready_to_order_materials', label: 'Ready to Order Materials', phase: 'post_sale', color: 'orange', sortOrder: 7 },
+  { id: 'materials_ordered', label: 'Materials Ordered', phase: 'post_sale', color: 'orange', sortOrder: 8 },
+  { id: 'scheduling_installation', label: 'Scheduling Installation', phase: 'post_sale', color: 'purple', sortOrder: 9 },
+  { id: 'installation_scheduled', label: 'Installation Scheduled', phase: 'post_sale', color: 'purple', sortOrder: 10 },
+  { id: 'installation_delayed', label: 'Installation Delayed', phase: 'post_sale', color: 'red', sortOrder: 11 },
+  { id: 'installation_in_progress', label: 'Installation In Progress', phase: 'post_sale', color: 'blue', sortOrder: 12 },
+  { id: 'scheduling_walkthrough', label: 'Scheduling Walkthrough', phase: 'post_sale', color: 'blue', sortOrder: 13 },
+  { id: 'walkthrough_scheduled', label: 'Walkthrough Scheduled', phase: 'post_sale', color: 'blue', sortOrder: 14 },
+  { id: 'fixes_needed', label: 'Fixes Needed', phase: 'post_sale', color: 'orange', sortOrder: 15 },
+  { id: 'final_payment_due', label: 'Final Payment Due', phase: 'post_sale', color: 'yellow', sortOrder: 16 },
+  { id: 'requesting_review', label: 'Requesting Review', phase: 'post_sale', color: 'gray', sortOrder: 17 },
+  { id: 'complete', label: 'Complete', phase: 'post_sale', color: 'green', sortOrder: 18 },
 ];
 
 // Aliases for backward compatibility
@@ -79,3 +75,13 @@ export const getStatusesByPhase = (phase: 'pre_sale' | 'post_sale'): ProjectStat
 
 export const preSaleStatuses = getStatusesByPhase('pre_sale');
 export const postSaleStatuses = getStatusesByPhase('post_sale');
+
+// Helper to check if customer is in pre-sale (not yet won)
+export const isPreSale = (customerStatus: CustomerStatus): boolean => {
+  return customerStatus !== 'won' && customerStatus !== 'lost' && customerStatus !== 'active' && customerStatus !== 'complete';
+};
+
+// Helper to check if customer is active (won, project in progress)
+export const isActive = (customerStatus: CustomerStatus): boolean => {
+  return customerStatus === 'won' || customerStatus === 'active';
+};

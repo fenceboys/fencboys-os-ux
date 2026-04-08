@@ -7,3 +7,5 @@ export { DocumentCategoriesPage } from './DocumentCategoriesPage';
 export { CustomerStatusPage } from './CustomerStatusPage';
 export { RequestTypesPage } from './RequestTypesPage';
 export { AdminLanding } from './AdminLanding';
+export { PortalCopyPage } from './PortalCopyPage';
+export { DashboardViewsPage } from './DashboardViewsPage';

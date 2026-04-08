@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { StatCard, TabBar, StatusDropdown, Button, Modal, Dropdown, ContactActions } from '../ui';
-import { PillDropdown, buildTypeOptions, customerStatusOptions } from '../ui/PillDropdown';
+import { PillDropdown, buildTypeOptions, customerStatusOptions, projectStatusOptions } from '../ui/PillDropdown';
 import { Table } from '../ui/Table';
 import { CustomerProjectModal } from './CustomerProjectModal';
 import { CustomerForm } from '../customers/CustomerForm';
 import { useData } from '../../context/DataContext';
-import { getStatusInfo, projectStatuses } from '../../constants/statuses';
+import { getStatusInfo } from '../../constants/statuses';
 import { Project, ProjectStatus, RequestType, BuildType, CustomerStatus } from '../../types';
 
 const tabs = [
@@ -45,13 +45,11 @@ export const SalesDashboard: React.FC = () => {
     return customer?.status === 'lead';
   });
 
-  // Status options limited to pre-sale statuses for salespeople
-  const preSaleStatusOptions = projectStatuses
-    .filter(s => s.phase === 'pre_sale')
-    .map(s => ({
-      value: s.id,
-      label: s.label,
-    }));
+  // Project status options for dropdowns (post-sale only)
+  const projectStatusDropdownOptions = projectStatusOptions.map(s => ({
+    value: s.value,
+    label: s.label,
+  }));
 
   const preSaleProjects = leadProjects.filter(p => {
     const status = getStatusInfo(p.status);
@@ -129,7 +127,7 @@ export const SalesDashboard: React.FC = () => {
                   <div onClick={(e) => e.stopPropagation()}>
                     <StatusDropdown
                       value={project.status}
-                      options={preSaleStatusOptions}
+                      options={projectStatusDropdownOptions}
                       onChange={(value) => updateProject(project.id, { status: value as ProjectStatus })}
                     />
                   </div>
@@ -272,7 +270,7 @@ export const SalesDashboard: React.FC = () => {
                       <div onClick={(e) => e.stopPropagation()}>
                         <StatusDropdown
                           value={project.status}
-                          options={preSaleStatusOptions}
+                          options={projectStatusDropdownOptions}
                           onChange={(newStatus) => updateProject(project.id, { status: newStatus as ProjectStatus })}
                         />
                       </div>
@@ -507,7 +505,7 @@ export const SalesDashboard: React.FC = () => {
                   <div onClick={(e) => e.stopPropagation()}>
                     <StatusDropdown
                       value={project.status}
-                      options={preSaleStatusOptions}
+                      options={projectStatusDropdownOptions}
                       onChange={(value) => updateProject(project.id, { status: value as ProjectStatus })}
                     />
                   </div>
@@ -646,7 +644,7 @@ export const SalesDashboard: React.FC = () => {
                   <div onClick={(e) => e.stopPropagation()}>
                     <StatusDropdown
                       value={project.status}
-                      options={preSaleStatusOptions}
+                      options={projectStatusDropdownOptions}
                       onChange={(value) => updateProject(project.id, { status: value as ProjectStatus })}
                     />
                   </div>
@@ -755,7 +753,7 @@ export const SalesDashboard: React.FC = () => {
                   <div onClick={(e) => e.stopPropagation()}>
                     <StatusDropdown
                       value={project.status}
-                      options={preSaleStatusOptions}
+                      options={projectStatusDropdownOptions}
                       onChange={(value) => updateProject(project.id, { status: value as ProjectStatus })}
                     />
                   </div>

@@ -6,8 +6,8 @@ import { Table } from '../ui/Table';
 import { PageLayout } from '../layout';
 import { CustomerForm } from './CustomerForm';
 import { useData } from '../../context/DataContext';
-import { getStatusInfo, getCustomerStatusInfo, projectStatuses } from '../../constants/statuses';
-import { PillDropdown, buildTypeOptions } from '../ui/PillDropdown';
+import { getStatusInfo, getCustomerStatusInfo } from '../../constants/statuses';
+import { PillDropdown, buildTypeOptions, projectStatusOptions } from '../ui/PillDropdown';
 import { Project, ProjectStatus, BuildType, Activity } from '../../types';
 
 export const CustomerPage: React.FC = () => {
@@ -43,8 +43,8 @@ export const CustomerPage: React.FC = () => {
     }
   }, [customer?.notes]);
 
-  const statusOptions = projectStatuses.map(s => ({
-    value: s.id,
+  const statusOptions = projectStatusOptions.map(s => ({
+    value: s.value,
     label: s.label,
   }));
 

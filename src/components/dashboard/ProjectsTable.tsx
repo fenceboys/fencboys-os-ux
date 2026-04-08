@@ -1,10 +1,9 @@
 import React from 'react';
 import { Project, ProjectStatus, BuildType, CustomerStatus } from '../../types';
 import { Table, StatusDropdown, Dropdown } from '../ui';
-import { PillDropdown, buildTypeOptions, customerStatusOptions } from '../ui/PillDropdown';
+import { PillDropdown, buildTypeOptions, customerStatusOptions, projectStatusOptions } from '../ui/PillDropdown';
 import { ContactActions } from '../ui/ContactActions';
 import { useData } from '../../context/DataContext';
-import { projectStatuses } from '../../constants/statuses';
 
 interface ProjectsTableProps {
   projects: Project[];
@@ -17,8 +16,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
 }) => {
   const { getCustomerById, getSalespersonById, updateProject, updateCustomer, salespeople, getActivitiesByProjectId } = useData();
 
-  const statusOptions = projectStatuses.map(s => ({
-    value: s.id,
+  const statusOptions = projectStatusOptions.map(s => ({
+    value: s.value,
     label: s.label,
   }));
 

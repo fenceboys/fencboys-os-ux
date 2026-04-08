@@ -1,14 +1,48 @@
 export type RequestType = 'build' | 'replace' | 'repair';
 export type PreferredContact = 'phone' | 'email' | 'text';
 
-export type CustomerStatus = 'lead' | 'needs_qualifying' | 'unqualified_lead' | 'active' | 'complete';
+// Lead Status (pre-sale journey)
+// Note: Legacy values (lead, active, complete, needs_qualifying, unqualified_lead) kept for backward compatibility
+export type CustomerStatus =
+  | 'new_lead'
+  | 'contact_attempted'
+  | 'contacted'
+  | 'repair_scheduled'
+  | 'quote_scheduled'
+  | 'building_proposal'
+  | 'proposal_sent'
+  | 'awaiting_deposit'
+  | 'won'
+  | 'lost'
+  // Legacy values - to be migrated
+  | 'lead'
+  | 'active'
+  | 'complete'
+  | 'needs_qualifying'
+  | 'unqualified_lead';
 
 // New types for Phase 1
 export type BuildType = 'new_build' | 'replacement' | 'repair';
 export type LeadSource = 'webform' | 'email' | 'phone' | 'text' | 'google_ads' | 'meta_ads' | 'direct_mail' | 'out_of_house';
 
+// Project Status (post-sale journey - after deposit paid)
+// Note: Legacy pre-sale values kept for backward compatibility during migration
 export type ProjectStatus =
-  // Pre-Sale
+  | 'not_started'           // Placeholder while in pre-sale
+  | 'permit_preparation'
+  | 'permit_submitted'
+  | 'permit_revision_needed'
+  | 'permit_resubmitted'
+  | 'ready_to_order_materials'
+  | 'materials_ordered'
+  | 'installation_scheduled'
+  | 'installation_delayed'
+  | 'installation_in_progress'
+  | 'walkthrough_scheduled'
+  | 'fixes_needed'
+  | 'final_payment_due'
+  | 'complete'
+  // Legacy pre-sale values - to be migrated to CustomerStatus
   | 'new_lead'
   | 'quote_scheduled'
   | 'building_proposal'
@@ -16,24 +50,10 @@ export type ProjectStatus =
   | 'awaiting_deposit'
   | 'lost'
   | 'quote_expired'
-  // Post-Sale
-  | 'permit_preparation'
   | 'customer_docs_needed'
-  | 'permit_submitted'
-  | 'permit_revision_needed'
-  | 'permit_resubmitted'
-  | 'ready_to_order_materials'
-  | 'materials_ordered'
   | 'scheduling_installation'
-  | 'installation_scheduled'
-  | 'installation_delayed'
-  | 'installation_in_progress'
   | 'scheduling_walkthrough'
-  | 'walkthrough_scheduled'
-  | 'fixes_needed'
-  | 'final_payment_due'
-  | 'requesting_review'
-  | 'complete';
+  | 'requesting_review';
 
 
 export type Phase = 'pre_sale' | 'post_sale';

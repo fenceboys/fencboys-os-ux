@@ -1,13 +1,34 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input, Modal, StatusDropdown, Dropdown } from '../ui';
-import { PillDropdown, buildTypeOptions } from '../ui/PillDropdown';
+import { PillDropdown, buildTypeOptions, customerStatusOptions, projectStatusOptions } from '../ui/PillDropdown';
 import { Table } from '../ui/Table';
 import { Sidebar, SidebarSection, CheckboxFilter } from '../layout/Sidebar';
 import { CustomerForm } from './CustomerForm';
 import { useData } from '../../context/DataContext';
-import { customerStatuses, projectStatuses } from '../../constants/statuses';
 import { Customer, CustomerStatus, ProjectStatus, BuildType } from '../../types';
+
+// Post-sale project statuses for sidebar filter
+const postSaleStatuses = [
+  { id: 'not_started', label: 'Not Started', phase: 'permits' },
+  { id: 'permit_preparation', label: 'Permit Preparation', phase: 'permits' },
+  { id: 'customer_docs_needed', label: 'Customer Docs Needed', phase: 'permits' },
+  { id: 'permit_submitted', label: 'Permit Submitted', phase: 'permits' },
+  { id: 'permit_revision_needed', label: 'Permit Revision Needed', phase: 'permits' },
+  { id: 'permit_resubmitted', label: 'Permit Resubmitted', phase: 'permits' },
+  { id: 'ready_to_order_materials', label: 'Ready to Order Materials', phase: 'materials' },
+  { id: 'materials_ordered', label: 'Materials Ordered', phase: 'materials' },
+  { id: 'scheduling_installation', label: 'Scheduling Installation', phase: 'scheduling' },
+  { id: 'installation_scheduled', label: 'Installation Scheduled', phase: 'scheduling' },
+  { id: 'installation_delayed', label: 'Installation Delayed', phase: 'scheduling' },
+  { id: 'installation_in_progress', label: 'Installation In Progress', phase: 'installation' },
+  { id: 'scheduling_walkthrough', label: 'Scheduling Walkthrough', phase: 'closeout' },
+  { id: 'walkthrough_scheduled', label: 'Walkthrough Scheduled', phase: 'closeout' },
+  { id: 'fixes_needed', label: 'Fixes Needed', phase: 'closeout' },
+  { id: 'final_payment_due', label: 'Final Payment Due', phase: 'closeout' },
+  { id: 'requesting_review', label: 'Requesting Review', phase: 'closeout' },
+  { id: 'complete', label: 'Complete', phase: 'closeout' },
+];
 
 export const CustomerList: React.FC = () => {
   const navigate = useNavigate();
@@ -42,8 +63,7 @@ export const CustomerList: React.FC = () => {
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(searchParams.get('new') === 'true');
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [expandedPhases, setExpandedPhases] = useState<Record<string, boolean>>({
-    sales: true,
-    permits: false,
+    permits: true,
     materials: false,
     scheduling: false,
     installation: false,
@@ -144,8 +164,15 @@ export const CustomerList: React.FC = () => {
     setSearchParams({});
   };
 
-  const statusOptions = customerStatuses.map(s => ({
-    value: s.id,
+  // Use customerStatusOptions for the table dropdown
+  const statusOptions = customerStatusOptions.map(s => ({
+    value: s.value,
+    label: s.label,
+  }));
+
+  // Use projectStatusOptions (post-sale only) for project status dropdown
+  const projectStatusDropdownOptions = projectStatusOptions.map(s => ({
+    value: s.value,
     label: s.label,
   }));
 
@@ -154,14 +181,14 @@ export const CustomerList: React.FC = () => {
       {/* Sidebar Filters */}
       <Sidebar className="flex-shrink-0">
         <SidebarSection title="Customer Status">
-          {customerStatuses.map(status => {
-            const count = customers.filter(c => c.status === status.id).length;
+          {customerStatusOptions.map(status => {
+            const count = customers.filter(c => c.status === status.value).length;
             return (
               <CheckboxFilter
-                key={status.id}
+                key={status.value}
                 label={status.label}
-                checked={selectedStatuses.includes(status.id)}
-                onChange={(checked) => handleStatusToggle(status.id, checked)}
+                checked={selectedStatuses.includes(status.value as CustomerStatus)}
+                onChange={(checked) => handleStatusToggle(status.value as CustomerStatus, checked)}
                 count={count}
               />
             );
@@ -198,48 +225,25 @@ export const CustomerList: React.FC = () => {
           })}
         </SidebarSection>
 
-        <SidebarSection title="Project Status">
-          {/* Sales */}
-          <button
-            onClick={() => togglePhase('sales')}
-            className={`flex items-center justify-between w-full mb-2 px-2 py-1.5 text-left rounded-md transition-colors ${expandedPhases.sales ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 hover:bg-gray-100'}`}
-          >
-            <span className="text-xs font-medium text-gray-700">Sales</span>
-            <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${expandedPhases.sales ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          {expandedPhases.sales && projectStatuses.filter(s => ['new_lead', 'quote_scheduled', 'building_proposal', 'proposal_sent', 'awaiting_deposit', 'lost', 'quote_expired'].includes(s.id)).map(status => {
-            const count = projects.filter(p => p.status === status.id).length;
-            return (
-              <CheckboxFilter
-                key={status.id}
-                label={status.label}
-                checked={selectedProjectStatuses.includes(status.id)}
-                onChange={(checked) => handleProjectStatusToggle(status.id, checked)}
-                count={count}
-              />
-            );
-          })}
-
+        <SidebarSection title="Project Status (Post-Sale)">
           {/* Permits */}
           <button
             onClick={() => togglePhase('permits')}
-            className={`flex items-center justify-between w-full mt-2 mb-2 px-2 py-1.5 text-left rounded-md transition-colors ${expandedPhases.permits ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 hover:bg-gray-100'}`}
+            className={`flex items-center justify-between w-full mb-2 px-2 py-1.5 text-left rounded-md transition-colors ${expandedPhases.permits ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 hover:bg-gray-100'}`}
           >
             <span className="text-xs font-medium text-gray-700">Permits</span>
             <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${expandedPhases.permits ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          {expandedPhases.permits && projectStatuses.filter(s => ['permit_preparation', 'customer_docs_needed', 'permit_submitted', 'permit_revision_needed', 'permit_resubmitted'].includes(s.id)).map(status => {
+          {expandedPhases.permits && postSaleStatuses.filter(s => s.phase === 'permits').map(status => {
             const count = projects.filter(p => p.status === status.id).length;
             return (
               <CheckboxFilter
                 key={status.id}
                 label={status.label}
-                checked={selectedProjectStatuses.includes(status.id)}
-                onChange={(checked) => handleProjectStatusToggle(status.id, checked)}
+                checked={selectedProjectStatuses.includes(status.id as ProjectStatus)}
+                onChange={(checked) => handleProjectStatusToggle(status.id as ProjectStatus, checked)}
                 count={count}
               />
             );
@@ -255,14 +259,14 @@ export const CustomerList: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          {expandedPhases.materials && projectStatuses.filter(s => ['ready_to_order_materials', 'materials_ordered'].includes(s.id)).map(status => {
+          {expandedPhases.materials && postSaleStatuses.filter(s => s.phase === 'materials').map(status => {
             const count = projects.filter(p => p.status === status.id).length;
             return (
               <CheckboxFilter
                 key={status.id}
                 label={status.label}
-                checked={selectedProjectStatuses.includes(status.id)}
-                onChange={(checked) => handleProjectStatusToggle(status.id, checked)}
+                checked={selectedProjectStatuses.includes(status.id as ProjectStatus)}
+                onChange={(checked) => handleProjectStatusToggle(status.id as ProjectStatus, checked)}
                 count={count}
               />
             );
@@ -278,14 +282,14 @@ export const CustomerList: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          {expandedPhases.scheduling && projectStatuses.filter(s => ['scheduling_installation', 'installation_scheduled', 'installation_delayed'].includes(s.id)).map(status => {
+          {expandedPhases.scheduling && postSaleStatuses.filter(s => s.phase === 'scheduling').map(status => {
             const count = projects.filter(p => p.status === status.id).length;
             return (
               <CheckboxFilter
                 key={status.id}
                 label={status.label}
-                checked={selectedProjectStatuses.includes(status.id)}
-                onChange={(checked) => handleProjectStatusToggle(status.id, checked)}
+                checked={selectedProjectStatuses.includes(status.id as ProjectStatus)}
+                onChange={(checked) => handleProjectStatusToggle(status.id as ProjectStatus, checked)}
                 count={count}
               />
             );
@@ -301,14 +305,14 @@ export const CustomerList: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          {expandedPhases.installation && projectStatuses.filter(s => ['installation_in_progress'].includes(s.id)).map(status => {
+          {expandedPhases.installation && postSaleStatuses.filter(s => s.phase === 'installation').map(status => {
             const count = projects.filter(p => p.status === status.id).length;
             return (
               <CheckboxFilter
                 key={status.id}
                 label={status.label}
-                checked={selectedProjectStatuses.includes(status.id)}
-                onChange={(checked) => handleProjectStatusToggle(status.id, checked)}
+                checked={selectedProjectStatuses.includes(status.id as ProjectStatus)}
+                onChange={(checked) => handleProjectStatusToggle(status.id as ProjectStatus, checked)}
                 count={count}
               />
             );
@@ -324,14 +328,14 @@ export const CustomerList: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          {expandedPhases.closeout && projectStatuses.filter(s => ['scheduling_walkthrough', 'walkthrough_scheduled', 'fixes_needed', 'final_payment_due', 'requesting_review', 'complete'].includes(s.id)).map(status => {
+          {expandedPhases.closeout && postSaleStatuses.filter(s => s.phase === 'closeout').map(status => {
             const count = projects.filter(p => p.status === status.id).length;
             return (
               <CheckboxFilter
                 key={status.id}
                 label={status.label}
-                checked={selectedProjectStatuses.includes(status.id)}
-                onChange={(checked) => handleProjectStatusToggle(status.id, checked)}
+                checked={selectedProjectStatuses.includes(status.id as ProjectStatus)}
+                onChange={(checked) => handleProjectStatusToggle(status.id as ProjectStatus, checked)}
                 count={count}
               />
             );
@@ -409,15 +413,11 @@ export const CustomerList: React.FC = () => {
                   const customerProjects = projects.filter(p => p.customerId === customer.id);
                   if (customerProjects.length === 0) return <span className="text-gray-400 text-sm">No projects</span>;
                   const latestProject = customerProjects[0];
-                  const projectStatusOptions = projectStatuses.map(s => ({
-                    value: s.id,
-                    label: s.label,
-                  }));
                   return (
                     <div onClick={(e) => e.stopPropagation()}>
                       <StatusDropdown
                         value={latestProject.status}
-                        options={projectStatusOptions}
+                        options={projectStatusDropdownOptions}
                         onChange={(value) => updateProject(latestProject.id, { status: value as ProjectStatus })}
                       />
                     </div>

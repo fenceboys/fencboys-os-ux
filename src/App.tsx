@@ -28,6 +28,8 @@ import {
   CustomerStatusPage,
   RequestTypesPage,
   AdminLanding,
+  PortalCopyPage,
+  DashboardViewsPage,
 } from './components/admin';
 import './index.css';
 
@@ -61,6 +63,8 @@ function App() {
           <Route path="/admin/document-categories" element={<DocumentCategoriesPage />} />
           <Route path="/admin/customer-status" element={<CustomerStatusPage />} />
           <Route path="/admin/request-types" element={<RequestTypesPage />} />
+          <Route path="/admin/portal-copy" element={<PortalCopyPage />} />
+          <Route path="/admin/dashboard-views" element={<DashboardViewsPage />} />
           <Route path="/settings" element={<Placeholder />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
