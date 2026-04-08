@@ -9,8 +9,6 @@ interface StatusEditModalProps {
 }
 
 const phaseOptions: { value: ProjectPhase; label: string }[] = [
-  { value: 'schedule', label: 'Schedule' },
-  { value: 'proposal', label: 'Proposal' },
   { value: 'permits', label: 'Permits' },
   { value: 'materials', label: 'Materials' },
   { value: 'scheduling', label: 'Scheduling' },
@@ -41,7 +39,7 @@ export const StatusEditModal: React.FC<StatusEditModalProps> = ({
   const [formData, setFormData] = useState({
     name: status?.name || '',
     customerLabel: status?.customerLabel || customerLabelOptions[0],
-    phase: status?.phase || 'schedule' as ProjectPhase,
+    phase: status?.phase || 'permits' as ProjectPhase,
     triggerNote: status?.triggerNote || '',
     sortOrder: status?.sortOrder || 1,
     bgColor: status?.bgColor || defaultColors.bgColor,
