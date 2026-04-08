@@ -183,7 +183,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 // Data version - increment to force reset of localStorage
-const DATA_VERSION = '27';
+const DATA_VERSION = '28';
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Check data version and reset if outdated

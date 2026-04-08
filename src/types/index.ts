@@ -295,7 +295,7 @@ export interface User {
 }
 
 // Project Status Config (admin-manageable)
-export type ProjectPhase = 'schedule' | 'proposal' | 'permits' | 'materials' | 'scheduling' | 'installation' | 'close_out';
+export type ProjectPhase = 'permits' | 'materials' | 'scheduling' | 'installation' | 'close_out';
 
 export interface ProjectStatusConfig {
   id: string;

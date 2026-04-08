@@ -7,8 +7,6 @@ import { StatusEditModal } from './StatusEditModal';
 import { NotificationConfigModal } from './NotificationConfigModal';
 
 const phaseLabels: Record<ProjectPhase, string> = {
-  schedule: 'Schedule',
-  proposal: 'Proposal',
   permits: 'Permits',
   materials: 'Materials',
   scheduling: 'Scheduling',
@@ -17,8 +15,6 @@ const phaseLabels: Record<ProjectPhase, string> = {
 };
 
 const phaseOrder: ProjectPhase[] = [
-  'schedule',
-  'proposal',
   'permits',
   'materials',
   'scheduling',
