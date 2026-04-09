@@ -4,6 +4,7 @@ import { Table, StatusDropdown, Dropdown } from '../ui';
 import { PillDropdown, buildTypeOptions, customerStatusOptions, projectStatusOptions, portalStatusOptions } from '../ui/PillDropdown';
 import { ContactActions } from '../ui/ContactActions';
 import { useData } from '../../context/DataContext';
+import { TABLE_MIN_WIDTHS } from '../../constants/sizing';
 
 interface ProjectsTableProps {
   projects: Project[];
@@ -79,7 +80,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
       key: 'salesperson',
       header: 'Salesperson',
       render: (project: Project) => (
-        <div onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ minWidth: '140px' }}>
+        <div onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ minWidth: TABLE_MIN_WIDTHS.salesperson }}>
           <Dropdown
             options={salespersonOptions}
             value={project.salespersonId || ''}

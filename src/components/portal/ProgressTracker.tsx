@@ -1,5 +1,6 @@
 import React from 'react';
 import { ProjectStatus } from '../../types';
+import { PROGRESS_TRACKER } from '../../constants/sizing';
 
 interface ProgressTrackerProps {
   status: ProjectStatus;
@@ -134,7 +135,7 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({ status }) => {
               return (
                 <div key={stage.id} className="flex items-start">
                   {/* Stage column */}
-                  <div className="flex flex-col items-center" style={{ width: '100px' }}>
+                  <div className="flex flex-col items-center" style={{ width: PROGRESS_TRACKER.normalWidth }}>
                     {/* Circle with icon */}
                     <div
                       className={`

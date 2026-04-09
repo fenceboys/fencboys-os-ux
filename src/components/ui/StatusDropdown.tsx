@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { ProjectStatus, CustomerStatus, ProjectStatusConfig, CustomerStatusConfig } from '../../types';
+import { colors } from '../../styles/theme';
 
 interface StatusDropdownProps {
   value: ProjectStatus | CustomerStatus;
@@ -54,9 +55,9 @@ export const StatusDropdown: React.FC<StatusDropdownProps> = ({
 
   const iconSize = size === 'sm' ? 'w-2.5 h-2.5' : 'w-3 h-3';
 
-  // Default colors if no config found
-  const defaultBg = '#f3f4f6';
-  const defaultText = '#374151';
+  // Default colors if no config found (from theme)
+  const defaultBg = colors.statusGray;
+  const defaultText = colors.statusGrayText;
 
   return (
     <div className="relative" ref={dropdownRef}>

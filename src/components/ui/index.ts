@@ -10,3 +10,7 @@ export { Toggle } from './Toggle';
 export { Input, Textarea } from './Input';
 export { StatusDropdown } from './StatusDropdown';
 export { ContactActions } from './ContactActions';
+export { PillDropdown, buildTypeOptions, leadSourceOptions, customerStatusOptions, portalStatusOptions, projectStatusOptions } from './PillDropdown';
+export type { PillDropdownOption } from './PillDropdown';
+export { StatusPillDropdown } from './StatusPillDropdown';
+export type { StatusPillOption } from './StatusPillDropdown';

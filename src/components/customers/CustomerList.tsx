@@ -7,6 +7,8 @@ import { Sidebar, SidebarSection, CheckboxFilter } from '../layout/Sidebar';
 import { CustomerForm } from './CustomerForm';
 import { useData } from '../../context/DataContext';
 import { Customer, CustomerStatus, ProjectStatus, BuildType, LeadSource } from '../../types';
+import { leadSourceDropdownOptions } from '../../constants/leadSources';
+import { TABLE_MIN_WIDTHS } from '../../constants/sizing';
 
 // Post-sale project statuses for sidebar filter
 const postSaleStatuses = [
@@ -28,20 +30,6 @@ const postSaleStatuses = [
   { id: 'final_payment_due', label: 'Final Payment Due', phase: 'closeout' },
   { id: 'requesting_review', label: 'Requesting Review', phase: 'closeout' },
   { id: 'complete', label: 'Complete', phase: 'closeout' },
-];
-
-// Lead source options
-const leadSourceOptions = [
-  { value: 'unknown', label: 'Unknown' },
-  { value: 'webflow_form', label: 'WebFlow Form' },
-  { value: 'meta_ads', label: 'Meta Ads' },
-  { value: 'google_lsa', label: 'Google LSA' },
-  { value: 'referral', label: 'Referral' },
-  { value: 'out_of_home', label: 'Out of Home' },
-  { value: 'phone', label: 'Phone' },
-  { value: 'email', label: 'Email' },
-  { value: 'text', label: 'Text' },
-  { value: 'organic_search', label: 'Organic Search' },
 ];
 
 export const CustomerList: React.FC = () => {
@@ -489,9 +477,9 @@ export const CustomerList: React.FC = () => {
                   const latestProject = customerProjects[0];
                   if (!latestProject) return <span className="text-gray-400 text-sm">-</span>;
                   return (
-                    <div onClick={(e) => e.stopPropagation()} style={{ minWidth: '120px' }}>
+                    <div onClick={(e) => e.stopPropagation()} style={{ minWidth: TABLE_MIN_WIDTHS.dropdown }}>
                       <Dropdown
-                        options={leadSourceOptions}
+                        options={leadSourceDropdownOptions}
                         value={latestProject.leadSource || 'unknown'}
                         onChange={(value) => updateProject(latestProject.id, { leadSource: value as LeadSource })}
                       />
@@ -508,7 +496,7 @@ export const CustomerList: React.FC = () => {
                     label: sp.name,
                   }));
                   return (
-                    <div onClick={(e) => e.stopPropagation()} style={{ minWidth: '140px' }}>
+                    <div onClick={(e) => e.stopPropagation()} style={{ minWidth: TABLE_MIN_WIDTHS.salesperson }}>
                       <Dropdown
                         options={salespersonOptions}
                         value={customer.salespersonId || ''}

@@ -1,80 +1,10 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, Button, Toggle, Dropdown, Modal } from '../ui';
+import { Card, CardHeader, CardTitle, Button, Toggle, Dropdown, Modal, StatusPillDropdown } from '../ui';
 import { PageLayout } from '../layout';
 import { ToolCards } from './ToolCards';
 import { useData } from '../../context/DataContext';
 import { ProjectStatus, Activity } from '../../types';
-
-// Status Pill Dropdown Component
-const StatusPillDropdown: React.FC<{
-  status: ProjectStatus;
-  options: { value: string; label: string; bgColor?: string; textColor?: string }[];
-  onChange: (value: string) => void;
-  disabled?: boolean;
-  disabledReason?: string;
-}> = ({ status, options, onChange, disabled = false, disabledReason }) => {
-  const [isOpen, setIsOpen] = React.useState(false);
-  const dropdownRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const selectedOption = options.find(o => o.value === status);
-  const bgColor = selectedOption?.bgColor || '#f3f4f6';
-  const textColor = selectedOption?.textColor || '#374151';
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled}
-        title={disabled ? disabledReason : undefined}
-        className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-full border transition-colors ${
-          disabled ? 'cursor-not-allowed opacity-60' : 'hover:opacity-80'
-        }`}
-        style={{ backgroundColor: bgColor, color: textColor, borderColor: bgColor }}
-      >
-        {selectedOption?.label || status}
-        {!disabled && (
-          <svg className="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        )}
-      </button>
-
-      {isOpen && !disabled && (
-        <div className="absolute z-20 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-auto">
-          {options.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => {
-                onChange(option.value);
-                setIsOpen(false);
-              }}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 ${
-                option.value === status ? 'bg-gray-50' : ''
-              }`}
-            >
-              <span
-                className="inline-block w-3 h-3 rounded-full"
-                style={{ backgroundColor: option.bgColor || '#f3f4f6' }}
-              />
-              {option.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // Company main line
 const MAIN_LINE = '(555) 123-4567';

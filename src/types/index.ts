@@ -87,6 +87,11 @@ export interface Project {
   name: string;
   address: string;
   status: ProjectStatus;
+  /**
+   * @deprecated This field uses display strings (e.g., 'New Lead') instead of CustomerStatus values.
+   * TODO: Migrate to use Customer.status directly or convert to CustomerStatus type.
+   * Currently contains arbitrary strings like 'Processing', 'Complete', 'New Lead', etc.
+   */
   customerStatus: string;
   salespersonId: string;
   portalLive: boolean;

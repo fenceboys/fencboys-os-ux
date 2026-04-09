@@ -1,5 +1,6 @@
 import React from 'react';
 import { ProjectStatus } from '../../types';
+import { PROGRESS_TRACKER } from '../../constants/sizing';
 
 interface CompactProgressTrackerProps {
   status: ProjectStatus;
@@ -194,7 +195,7 @@ export const CompactProgressTracker: React.FC<CompactProgressTrackerProps> = ({ 
             const isLossBubble = isLoss && stage.id <= 2;
 
             return (
-              <div key={stage.id} className="flex flex-col items-center" style={{ width: '56px' }}>
+              <div key={stage.id} className="flex flex-col items-center" style={{ width: PROGRESS_TRACKER.compactWidth }}>
                 <span className={`text-sm font-medium text-center ${isLossBubble ? 'text-red-600' : isCurrent ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-400'}`}>
                   {stage.name}
                 </span>

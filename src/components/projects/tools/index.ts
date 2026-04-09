@@ -5,3 +5,5 @@ export { PhotosTool } from './PhotosTool';
 export { DocumentsTool } from './DocumentsTool';
 export { DocumentDetailModal } from './DocumentDetailModal';
 export { CommunicationsTool } from './CommunicationsTool';
+export { PaymentsTool } from './PaymentsTool';
+export { ProposalsTool } from './ProposalsTool';

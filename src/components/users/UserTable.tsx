@@ -3,6 +3,7 @@ import { Table, Dropdown } from '../ui';
 import { PillDropdown, PillDropdownOption } from '../ui/PillDropdown';
 import { User } from '../../types';
 import { useData } from '../../context/DataContext';
+import { TABLE_MIN_WIDTHS } from '../../constants/sizing';
 
 interface UserTableProps {
   users: User[];
@@ -188,7 +189,7 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onEditUser }) => {
             key: 'quo',
             header: 'QUO',
             render: (user) => (
-              <div onClick={(e) => e.stopPropagation()} style={{ minWidth: '140px' }}>
+              <div onClick={(e) => e.stopPropagation()} style={{ minWidth: TABLE_MIN_WIDTHS.salesperson }}>
                 <Dropdown
                   options={quoOptions}
                   value={user.integrations.quo.lineType || 'none'}

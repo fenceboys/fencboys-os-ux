@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { customerStatuses, projectStatuses } from '../../constants/statuses';
 
 export interface PillDropdownOption {
   value: string;
@@ -108,35 +109,15 @@ export const buildTypeOptions: PillDropdownOption[] = [
   { value: 'repair', label: 'Repair', color: 'orange' },
 ];
 
-export const leadSourceOptions: PillDropdownOption[] = [
-  { value: 'webform', label: 'Webform', color: 'blue' },
-  { value: 'email', label: 'Email', color: 'cyan' },
-  { value: 'phone', label: 'Phone', color: 'green' },
-  { value: 'text', label: 'Text', color: 'purple' },
-  { value: 'google_ads', label: 'Google Ads', color: 'yellow' },
-  { value: 'meta_ads', label: 'Meta Ads', color: 'pink' },
-  { value: 'direct_mail', label: 'Direct Mail', color: 'orange' },
-  { value: 'out_of_house', label: 'Out of House', color: 'gray' },
-];
+// Lead source options - imported from constants for consistency
+export { leadSourcePillOptions as leadSourceOptions } from '../../constants/leadSources';
 
-// Customer Status options (full customer journey)
-export const customerStatusOptions: PillDropdownOption[] = [
-  // Pre-sale
-  { value: 'new_lead', label: 'New Lead', color: 'gray' },
-  { value: 'contact_attempted', label: 'Contact Attempted', color: 'yellow' },
-  { value: 'contacted', label: 'Contacted', color: 'blue' },
-  { value: 'needs_qualifying', label: 'Needs Qualifying', color: 'orange' },
-  { value: 'quote_scheduled', label: 'Quote Scheduled', color: 'purple' },
-  { value: 'building_proposal', label: 'Building Proposal', color: 'yellow' },
-  { value: 'proposal_sent', label: 'Proposal Sent', color: 'cyan' },
-  { value: 'awaiting_deposit', label: 'Awaiting Deposit', color: 'cyan' },
-  // Post-sale (active customer)
-  { value: 'active_project', label: 'Active Project', color: 'green' },
-  { value: 'complete', label: 'Complete', color: 'green' },
-  // Terminal states
-  { value: 'quote_expired', label: 'Quote Expired', color: 'red' },
-  { value: 'lost', label: 'Lost', color: 'red' },
-];
+// Status options derived from the single source of truth in constants/statuses.ts
+// Customer Status options (derived from statuses.ts)
+export const customerStatusOptions: PillDropdownOption[] = customerStatuses
+  .filter(s => !['lead', 'won', 'unqualified_lead', 'active'].includes(s.id)) // Exclude legacy statuses
+  .sort((a, b) => a.sortOrder - b.sortOrder)
+  .map(s => ({ value: s.id, label: s.label, color: s.color }));
 
 // Portal Status options
 export const portalStatusOptions: PillDropdownOption[] = [
@@ -144,24 +125,7 @@ export const portalStatusOptions: PillDropdownOption[] = [
   { value: 'closed', label: 'Closed', color: 'red' },
 ];
 
-// Project Status options (post-sale only)
-export const projectStatusOptions: PillDropdownOption[] = [
-  { value: 'not_started', label: 'Not Started', color: 'gray' },
-  { value: 'permit_preparation', label: 'Permit Preparation', color: 'green' },
-  { value: 'customer_docs_needed', label: 'Customer Docs Needed', color: 'orange' },
-  { value: 'permit_submitted', label: 'Permit Submitted', color: 'green' },
-  { value: 'permit_revision_needed', label: 'Permit Revision Needed', color: 'orange' },
-  { value: 'permit_resubmitted', label: 'Permit Resubmitted', color: 'green' },
-  { value: 'ready_to_order_materials', label: 'Ready to Order Materials', color: 'orange' },
-  { value: 'materials_ordered', label: 'Materials Ordered', color: 'orange' },
-  { value: 'scheduling_installation', label: 'Scheduling Installation', color: 'purple' },
-  { value: 'installation_scheduled', label: 'Installation Scheduled', color: 'purple' },
-  { value: 'installation_delayed', label: 'Installation Delayed', color: 'red' },
-  { value: 'installation_in_progress', label: 'Installation in Progress', color: 'blue' },
-  { value: 'scheduling_walkthrough', label: 'Scheduling Walkthrough', color: 'blue' },
-  { value: 'walkthrough_scheduled', label: 'Walkthrough Scheduled', color: 'blue' },
-  { value: 'fixes_needed', label: 'Fixes Needed', color: 'orange' },
-  { value: 'final_payment_due', label: 'Final Payment Due', color: 'yellow' },
-  { value: 'requesting_review', label: 'Requesting Review', color: 'gray' },
-  { value: 'complete', label: 'Complete', color: 'green' },
-];
+// Project Status options (derived from statuses.ts)
+export const projectStatusOptions: PillDropdownOption[] = projectStatuses
+  .sort((a, b) => a.sortOrder - b.sortOrder)
+  .map(s => ({ value: s.id, label: s.label, color: s.color }));

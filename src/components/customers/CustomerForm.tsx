@@ -2,20 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Button, Input, Textarea, Dropdown } from '../ui';
 import { useData } from '../../context/DataContext';
 import { Customer, RequestType, LeadSource } from '../../types';
-
-// Lead source options
-const leadSourceOptions = [
-  { value: 'unknown', label: 'Unknown' },
-  { value: 'webflow_form', label: 'WebFlow Form' },
-  { value: 'meta_ads', label: 'Meta Ads' },
-  { value: 'google_lsa', label: 'Google LSA' },
-  { value: 'referral', label: 'Referral' },
-  { value: 'out_of_home', label: 'Out of Home' },
-  { value: 'phone', label: 'Phone' },
-  { value: 'email', label: 'Email' },
-  { value: 'text', label: 'Text' },
-  { value: 'organic_search', label: 'Organic Search' },
-];
+import { leadSourceDropdownOptions } from '../../constants/leadSources';
 
 interface CustomerFormProps {
   customer?: Customer;
@@ -216,7 +203,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ customer, onClose })
             Lead Source
           </label>
           <Dropdown
-            options={leadSourceOptions}
+            options={leadSourceDropdownOptions}
             value={formData.leadSource}
             onChange={(value) => handleChange('leadSource', value)}
           />
