@@ -5,6 +5,8 @@ export { ProposalTagsPage } from './ProposalTagsPage';
 export { PhotoCategoriesPage } from './PhotoCategoriesPage';
 export { DocumentCategoriesPage } from './DocumentCategoriesPage';
 export { CustomerStatusPage } from './CustomerStatusPage';
+export { CustomerStatusEditModal } from './CustomerStatusEditModal';
+export { CustomerNotificationConfigModal } from './CustomerNotificationConfigModal';
 export { RequestTypesPage } from './RequestTypesPage';
 export { AdminLanding } from './AdminLanding';
 export { PortalCopyPage } from './PortalCopyPage';

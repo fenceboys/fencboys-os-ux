@@ -91,7 +91,7 @@ export const ProjectStatusesPage: React.FC = () => {
   return (
     <PageLayout>
       <PageHeader
-        title="Project Phases"
+        title="Project Statuses"
         subtitle="Configure project statuses and notifications"
         icon={
           <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,10 +137,7 @@ export const ProjectStatusesPage: React.FC = () => {
                         {status.name}
                       </span>
                       <div>
-                        <p className="text-sm text-gray-600">
-                          Customer sees: <span className="font-medium">{status.customerLabel}</span>
-                        </p>
-                        <p className="text-xs text-gray-400">{status.triggerNote}</p>
+                        <p className="text-sm text-gray-500">{status.triggerNote}</p>
                       </div>
                     </div>
 

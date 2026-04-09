@@ -11,8 +11,8 @@ import { DocumentUpload } from '../components/portal/DocumentUpload';
 import { DocumentsList } from '../components/portal/DocumentsList';
 import { CommunicationLog } from '../components/portal/CommunicationLog';
 import { Card } from '../components/ui/Card';
-import { ProjectStatus } from '../types';
-import { projectStatuses } from '../constants/statuses';
+import { ProjectStatus, CustomerStatus } from '../types';
+import { projectStatuses, customerStatuses, isPreSale } from '../constants/statuses';
 
 export const Portal: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -26,8 +26,10 @@ export const Portal: React.FC = () => {
     getPhotosByProjectId,
     getActivitiesByProjectId,
     updateProject,
+    updateCustomer,
     updateProposal,
     addActivity,
+    customerStatusConfigs,
   } = useData();
   const [activeTab, setActiveTab] = useState<PortalTabType>('status');
 
@@ -160,13 +162,12 @@ export const Portal: React.FC = () => {
 
   // Determine contact info based on project phase
   const getContactInfo = () => {
-    const status = project?.status;
+    const projectStatus = project?.status;
+    const customerStatus = customer?.status;
 
-    // Phase 1 & 2 (Sales): Show assigned salesperson
-    const salesPhaseStatuses = ['new_lead', 'quote_scheduled', 'building_proposal', 'proposal_sent', 'awaiting_deposit', 'lost', 'quote_expired'];
-
-    // Phase 3 & 4 (Permits & Materials) + Scheduling: Show Fence Boys Team
-    const permitsAndMaterialsStatuses = ['permit_preparation', 'customer_docs_needed', 'permit_submitted', 'permit_revision_needed', 'permit_resubmitted', 'ready_to_order_materials', 'materials_ordered', 'scheduling_installation'];
+    // Check if customer is in pre-sale (use customer.status for pre-sale phases)
+    const preSaleCustomerStatuses = ['new_lead', 'contact_attempted', 'contacted', 'needs_qualifying', 'quote_scheduled', 'building_proposal', 'proposal_sent', 'awaiting_deposit', 'quote_expired', 'lost'];
+    const isInPreSale = customerStatus && preSaleCustomerStatuses.includes(customerStatus);
 
     // Phase 5 & 6 (Installation) + Fixes: Show Colt Stonerook
     const schedulingAndInstallationStatuses = ['installation_scheduled', 'installation_delayed', 'installation_in_progress', 'scheduling_walkthrough', 'walkthrough_scheduled', 'fixes_needed'];
@@ -174,16 +175,17 @@ export const Portal: React.FC = () => {
     // Phase 7 (Close Out - after fixes): Show Fence Boys Team
     const closeOutStatuses = ['final_payment_due', 'requesting_review', 'complete'];
 
-    if (status && salesPhaseStatuses.includes(status)) {
+    // Pre-sale: Always show assigned salesperson
+    if (isInPreSale) {
       return {
         type: 'salesperson' as const,
         name: salesperson?.name || 'Your Sales Rep',
         phone: salesperson?.phone || '(512) 883-3623',
         email: salesperson?.email || 'sales@fenceboys.com',
         avatar: salesperson?.avatar,
-        initials: salesperson?.name.split(' ').map(n => n[0]).join('') || 'FB',
+        initials: salesperson?.name?.split(' ').map(n => n[0]).join('') || 'FB',
       };
-    } else if (status && schedulingAndInstallationStatuses.includes(status)) {
+    } else if (projectStatus && schedulingAndInstallationStatuses.includes(projectStatus)) {
       return {
         type: 'colt' as const,
         name: 'Colt Stonerook',
@@ -359,9 +361,9 @@ export const Portal: React.FC = () => {
           </button>
 
           {showTestingPanel && (
-            <div className="absolute bottom-12 right-0 bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-72">
+            <div className="absolute bottom-12 right-0 bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-80">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900 text-sm">Status Testing</h3>
+                <h3 className="font-semibold text-gray-900 text-sm">Portal Status Testing</h3>
                 <button
                   onClick={() => setShowTestingPanel(false)}
                   className="text-gray-400 hover:text-gray-600"
@@ -371,43 +373,148 @@ export const Portal: React.FC = () => {
                   </svg>
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mb-3">
-                Change status to test different portal states
-              </p>
-              <select
-                value={project.status}
-                onChange={(e) => updateProject(project.id, { status: e.target.value as ProjectStatus })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                {projectStatuses.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-              <div className="mt-3 flex gap-2">
-                <button
-                  onClick={() => {
-                    const currentIndex = projectStatuses.findIndex(s => s.id === project.status);
-                    if (currentIndex > 0) {
-                      updateProject(project.id, { status: projectStatuses[currentIndex - 1].id });
+
+              {/* Info banner */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-4">
+                <p className="text-xs text-blue-800">
+                  <strong>Backend Note:</strong> Pre-sale statuses use <code className="bg-blue-100 px-1 rounded">customer.status</code>, post-sale uses <code className="bg-blue-100 px-1 rounded">project.status</code>
+                </p>
+              </div>
+
+              {/* Unified Status Dropdown */}
+              <div className="mb-3">
+                <label className="text-xs font-medium text-gray-700 mb-2 block">Portal Status</label>
+                <select
+                  value={
+                    // Pre-sale OR terminal states (quote_expired, lost) use customer status
+                    customer && (isPreSale(customer.status) || customer.status === 'quote_expired' || customer.status === 'lost')
+                      ? `customer:${customer.status}`
+                      : `project:${project.status}`
+                  }
+                  onChange={(e) => {
+                    const [type, status] = e.target.value.split(':');
+                    if (type === 'customer' && customer) {
+                      // Pre-sale/terminal: update customer status AND reset project to not_started
+                      updateCustomer(customer.id, { status: status as CustomerStatus });
+                      updateProject(project.id, { status: 'not_started' as ProjectStatus });
+                    } else if (type === 'project' && customer) {
+                      // Post-sale: set customer to active_project and update project status
+                      updateCustomer(customer.id, { status: 'active_project' });
+                      updateProject(project.id, { status: status as ProjectStatus });
                     }
                   }}
-                  className="flex-1 px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-xs font-medium hover:bg-gray-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  ← Prev
-                </button>
-                <button
-                  onClick={() => {
-                    const currentIndex = projectStatuses.findIndex(s => s.id === project.status);
-                    if (currentIndex < projectStatuses.length - 1) {
-                      updateProject(project.id, { status: projectStatuses[currentIndex + 1].id });
+                  {/* Pre-Sale Group (Customer Status) */}
+                  <optgroup label="── PRE-SALE (customer.status) ──">
+                    {customerStatuses
+                      .filter(s => {
+                        const config = customerStatusConfigs.find(c => c.name === s.label);
+                        return config?.hasPortalPage === true;
+                      })
+                      .sort((a, b) => a.sortOrder - b.sortOrder)
+                      .map((s) => (
+                        <option key={`customer:${s.id}`} value={`customer:${s.id}`}>
+                          {s.label}
+                        </option>
+                      ))}
+                  </optgroup>
+
+                  {/* Post-Sale Group (Project Status) */}
+                  <optgroup label="── POST-SALE (project.status) ──">
+                    {projectStatuses
+                      .filter(s => s.id !== 'not_started') // Skip placeholder status
+                      .map((s) => (
+                        <option key={`project:${s.id}`} value={`project:${s.id}`}>
+                          {s.label}
+                        </option>
+                      ))}
+                  </optgroup>
+                </select>
+
+                {/* Prev/Next Buttons */}
+                {(() => {
+                  // Build combined list of all testable statuses
+                  const preSaleStatuses = customerStatuses
+                    .filter(s => {
+                      const config = customerStatusConfigs.find(c => c.name === s.label);
+                      return config?.hasPortalPage === true;
+                    })
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map(s => ({ type: 'customer', id: s.id, label: s.label }));
+
+                  const postSaleStatuses = projectStatuses
+                    .filter(s => s.id !== 'not_started')
+                    .map(s => ({ type: 'project', id: s.id, label: s.label }));
+
+                  const allStatuses = [...preSaleStatuses, ...postSaleStatuses];
+
+                  // Find current index
+                  const currentValue = customer && (isPreSale(customer.status) || customer.status === 'quote_expired' || customer.status === 'lost')
+                    ? `customer:${customer.status}`
+                    : `project:${project.status}`;
+                  const [currentType, currentId] = currentValue.split(':');
+                  const currentIndex = allStatuses.findIndex(s => s.type === currentType && s.id === currentId);
+
+                  const goToStatus = (index: number) => {
+                    const status = allStatuses[index];
+                    if (!status || !customer) return;
+
+                    if (status.type === 'customer') {
+                      updateCustomer(customer.id, { status: status.id as CustomerStatus });
+                      updateProject(project.id, { status: 'not_started' as ProjectStatus });
+                    } else {
+                      updateCustomer(customer.id, { status: 'active_project' });
+                      updateProject(project.id, { status: status.id as ProjectStatus });
                     }
-                  }}
-                  className="flex-1 px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-xs font-medium hover:bg-gray-200"
-                >
-                  Next →
-                </button>
+                  };
+
+                  return (
+                    <div className="flex items-center justify-between mt-2">
+                      <button
+                        onClick={() => goToStatus(currentIndex - 1)}
+                        disabled={currentIndex <= 0}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Prev
+                      </button>
+                      <span className="text-xs text-gray-500">
+                        {currentIndex + 1} / {allStatuses.length}
+                      </span>
+                      <button
+                        onClick={() => goToStatus(currentIndex + 1)}
+                        disabled={currentIndex >= allStatuses.length - 1}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Next
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Current state indicator */}
+              <div className="border-t border-gray-200 pt-3 mt-3 space-y-1">
+                <p className="text-xs text-gray-600">
+                  <strong>Phase:</strong>{' '}
+                  {customer && (isPreSale(customer.status) || customer.status === 'quote_expired' || customer.status === 'lost') ? (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">Pre-Sale</span>
+                  ) : (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Post-Sale</span>
+                  )}
+                </p>
+                <p className="text-xs text-gray-500">
+                  customer.status: <code className="bg-gray-100 px-1 rounded">{customer?.status}</code>
+                </p>
+                <p className="text-xs text-gray-500">
+                  project.status: <code className="bg-gray-100 px-1 rounded">{project.status}</code>
+                </p>
               </div>
             </div>
           )}

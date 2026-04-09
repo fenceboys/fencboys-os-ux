@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, Badge, Button, Modal, Input, Textarea } from '../ui';
+import { Card, CardHeader, CardTitle, Button, Modal, Input } from '../ui';
 import { StatusDropdown } from '../ui/StatusDropdown';
 import { Table } from '../ui/Table';
 import { PageLayout } from '../layout';
 import { CustomerForm } from './CustomerForm';
 import { useData } from '../../context/DataContext';
-import { getStatusInfo, getCustomerStatusInfo } from '../../constants/statuses';
-import { PillDropdown, buildTypeOptions, projectStatusOptions } from '../ui/PillDropdown';
-import { Project, ProjectStatus, BuildType, Activity } from '../../types';
+import { PillDropdown, buildTypeOptions, projectStatusOptions, customerStatusOptions } from '../ui/PillDropdown';
+import { Project, ProjectStatus, BuildType, Activity, CustomerStatus } from '../../types';
 
 export const CustomerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +28,8 @@ export const CustomerPage: React.FC = () => {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectAddress, setNewProjectAddress] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
+  const [isBold, setIsBold] = useState(false);
+  const [isItalic, setIsItalic] = useState(false);
 
   const customer = getCustomerById(id || '');
   const projects = getProjectsByCustomerId(id || '');
@@ -131,8 +132,6 @@ export const CustomerPage: React.FC = () => {
     );
   }
 
-  const status = getCustomerStatusInfo(customer.status);
-
   return (
     <PageLayout>
       {/* Back Link */}
@@ -150,9 +149,28 @@ export const CustomerPage: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
           <h1 className="text-2xl font-semibold text-gray-900">{customer.name}</h1>
-          {status && (
-            <Badge color={status.color}>{status.label}</Badge>
-          )}
+          <div className="flex items-center space-x-2">
+            <StatusDropdown
+              value={customer.status}
+              options={customerStatusOptions.map(s => ({ value: s.value, label: s.label }))}
+              onChange={(value) => updateCustomer(customer.id, { status: value as CustomerStatus, statusChangedAt: new Date().toISOString() })}
+              statusType="customer"
+            />
+            <div className="flex items-center space-x-1 text-sm text-gray-500">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>
+                {(() => {
+                  const statusDate = customer.statusChangedAt
+                    ? new Date(customer.statusChangedAt)
+                    : new Date(customer.createdAt);
+                  const days = Math.floor((Date.now() - statusDate.getTime()) / (1000 * 60 * 60 * 24));
+                  return `${days}d in status`;
+                })()}
+              </span>
+            </div>
+          </div>
         </div>
         <div className="flex items-center space-x-2">
           <Button variant="outline" onClick={() => setShowEditModal(true)}>
@@ -240,19 +258,68 @@ export const CustomerPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* Notes */}
+        {/* Customer Notes */}
         <Card>
           <CardHeader>
-            <CardTitle>Notes</CardTitle>
+            <CardTitle>Customer Notes</CardTitle>
           </CardHeader>
           <div className="space-y-3">
-            <Textarea
-              value={customerNotes}
-              onChange={(e) => setCustomerNotes(e.target.value)}
-              placeholder="Add notes about this customer..."
-              rows={6}
-              className="resize-none"
-            />
+            {/* Editor with Toolbar */}
+            <div className="border border-gray-300 rounded-lg overflow-hidden">
+              {/* Toolbar */}
+              <div className="flex items-center gap-1 px-3 py-2 border-b border-gray-200 bg-gray-50">
+                <button
+                  type="button"
+                  onClick={() => setIsBold(!isBold)}
+                  className={`p-1.5 rounded hover:bg-gray-200 ${isBold ? 'bg-gray-200' : ''}`}
+                  title="Bold"
+                >
+                  <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsItalic(!isItalic)}
+                  className={`p-1.5 rounded hover:bg-gray-200 ${isItalic ? 'bg-gray-200' : ''}`}
+                  title="Italic"
+                >
+                  <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 4h4m-2 0v16m-2 0h4" transform="skewX(-10)" />
+                  </svg>
+                </button>
+                <div className="w-px h-5 bg-gray-300 mx-1" />
+                <button
+                  type="button"
+                  className="p-1.5 rounded hover:bg-gray-200"
+                  title="Bullet List"
+                >
+                  <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="p-1.5 rounded hover:bg-gray-200"
+                  title="Numbered List"
+                >
+                  <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 6h13M7 12h13M7 18h13M4 6h.01M4 12h.01M4 18h.01" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Text Area */}
+              <textarea
+                value={customerNotes}
+                onChange={(e) => setCustomerNotes(e.target.value)}
+                placeholder="Add notes about this customer..."
+                className={`w-full p-4 min-h-[120px] resize-none focus:outline-none ${
+                  isBold ? 'font-bold' : ''
+                } ${isItalic ? 'italic' : ''}`}
+              />
+            </div>
             <Button
               size="sm"
               variant="outline"
@@ -283,7 +350,7 @@ export const CustomerPage: React.FC = () => {
             { key: 'address', header: 'Address' },
             {
               key: 'buildType',
-              header: 'Build Type',
+              header: 'Job Type',
               render: (project) => (
                 <div onClick={(e) => e.stopPropagation()}>
                   <PillDropdown
@@ -296,7 +363,7 @@ export const CustomerPage: React.FC = () => {
             },
             {
               key: 'status',
-              header: 'Status',
+              header: 'Project Status',
               render: (project) => (
                 <div onClick={(e) => e.stopPropagation()}>
                   <StatusDropdown

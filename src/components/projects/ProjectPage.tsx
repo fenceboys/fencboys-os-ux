@@ -5,23 +5,12 @@ import { PageLayout } from '../layout';
 import { ToolCards } from './ToolCards';
 import { ActivityFeed } from './ActivityFeed';
 import { useData } from '../../context/DataContext';
-import { statuses, getStatusInfo } from '../../constants/statuses';
 import { ProjectStatus } from '../../types';
-
-const statusColorClasses: Record<string, string> = {
-  yellow: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  green: 'bg-green-100 text-green-800 border-green-200',
-  blue: 'bg-blue-100 text-blue-800 border-blue-200',
-  orange: 'bg-orange-100 text-orange-800 border-orange-200',
-  red: 'bg-red-100 text-red-800 border-red-200',
-  purple: 'bg-purple-100 text-purple-800 border-purple-200',
-  gray: 'bg-gray-100 text-gray-800 border-gray-200',
-};
 
 // Status Pill Dropdown Component
 const StatusPillDropdown: React.FC<{
   status: ProjectStatus;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; bgColor?: string; textColor?: string }[];
   onChange: (value: string) => void;
 }> = ({ status, options, onChange }) => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -37,15 +26,16 @@ const StatusPillDropdown: React.FC<{
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const statusInfo = getStatusInfo(status);
-  const colorClass = statusInfo ? statusColorClasses[statusInfo.color] : statusColorClasses.gray;
   const selectedOption = options.find(o => o.value === status);
+  const bgColor = selectedOption?.bgColor || '#f3f4f6';
+  const textColor = selectedOption?.textColor || '#374151';
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-full border transition-colors ${colorClass} hover:opacity-80`}
+        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-full border transition-colors hover:opacity-80"
+        style={{ backgroundColor: bgColor, color: textColor, borderColor: bgColor }}
       >
         {selectedOption?.label || status}
         <svg className="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,25 +45,24 @@ const StatusPillDropdown: React.FC<{
 
       {isOpen && (
         <div className="absolute z-20 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-auto">
-          {options.map((option) => {
-            const optionStatusInfo = getStatusInfo(option.value as ProjectStatus);
-            const optionColorClass = optionStatusInfo ? statusColorClasses[optionStatusInfo.color] : statusColorClasses.gray;
-            return (
-              <button
-                key={option.value}
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 ${
-                  option.value === status ? 'bg-gray-50' : ''
-                }`}
-              >
-                <span className={`inline-block w-3 h-3 rounded-full ${optionColorClass.split(' ')[0]}`} />
-                {option.label}
-              </button>
-            );
-          })}
+          {options.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 ${
+                option.value === status ? 'bg-gray-50' : ''
+              }`}
+            >
+              <span
+                className="inline-block w-3 h-3 rounded-full"
+                style={{ backgroundColor: option.bgColor || '#f3f4f6' }}
+              />
+              {option.label}
+            </button>
+          ))}
         </div>
       )}
     </div>
@@ -94,6 +83,7 @@ export const ProjectPage: React.FC = () => {
     updateProject,
     salespeople,
     getSalespersonById,
+    projectStatusConfigs,
   } = useData();
 
   const project = getProjectById(id || '');
@@ -113,10 +103,15 @@ export const ProjectPage: React.FC = () => {
     );
   }
 
-  const statusOptions = statuses.map(s => ({
-    value: s.id,
-    label: s.label,
-  }));
+  const statusOptions = projectStatusConfigs
+    .filter(s => s.isActive)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(s => ({
+      value: s.id,
+      label: s.name,
+      bgColor: s.bgColor,
+      textColor: s.textColor,
+    }));
 
   const salespersonOptions = salespeople.map(sp => ({
     value: sp.id,
@@ -124,7 +119,7 @@ export const ProjectPage: React.FC = () => {
   }));
 
   const handleStatusChange = (newStatus: string) => {
-    updateProject(project.id, { status: newStatus as ProjectStatus });
+    updateProject(project.id, { status: newStatus as ProjectStatus, statusChangedAt: new Date().toISOString() });
   };
 
   const handleSalespersonChange = (newSalespersonId: string) => {
@@ -197,11 +192,27 @@ export const ProjectPage: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
           <h1 className="text-2xl font-semibold text-gray-900">{project.name}</h1>
-          <StatusPillDropdown
-            status={project.status}
-            options={statusOptions}
-            onChange={handleStatusChange}
-          />
+          <div className="flex items-center space-x-2">
+            <StatusPillDropdown
+              status={project.status}
+              options={statusOptions}
+              onChange={handleStatusChange}
+            />
+            <div className="flex items-center space-x-1 text-sm text-gray-500">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>
+                {(() => {
+                  const statusDate = project.statusChangedAt
+                    ? new Date(project.statusChangedAt)
+                    : new Date(project.createdAt);
+                  const days = Math.floor((Date.now() - statusDate.getTime()) / (1000 * 60 * 60 * 24));
+                  return `${days}d in status`;
+                })()}
+              </span>
+            </div>
+          </div>
         </div>
         <div className="flex items-center space-x-2">
           <Button variant="outline" size="sm">

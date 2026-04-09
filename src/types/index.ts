@@ -1,29 +1,33 @@
 export type RequestType = 'build' | 'replace' | 'repair';
 export type PreferredContact = 'phone' | 'email' | 'text';
 
-// Lead Status (pre-sale journey)
-// Note: Legacy values (lead, active, complete, needs_qualifying, unqualified_lead) kept for backward compatibility
+// Customer Status (full customer journey)
+// Note: Legacy values (lead, active, won, needs_qualifying, unqualified_lead) kept for backward compatibility
 export type CustomerStatus =
+  // Pre-sale journey
   | 'new_lead'
   | 'contact_attempted'
   | 'contacted'
-  | 'repair_scheduled'
+  | 'needs_qualifying'
   | 'quote_scheduled'
   | 'building_proposal'
   | 'proposal_sent'
   | 'awaiting_deposit'
-  | 'won'
+  // Post-sale (active customer)
+  | 'active_project'
+  | 'complete'
+  // Terminal states
+  | 'quote_expired'
   | 'lost'
   // Legacy values - to be migrated
   | 'lead'
   | 'active'
-  | 'complete'
-  | 'needs_qualifying'
+  | 'won'
   | 'unqualified_lead';
 
 // New types for Phase 1
 export type BuildType = 'new_build' | 'replacement' | 'repair';
-export type LeadSource = 'webform' | 'email' | 'phone' | 'text' | 'google_ads' | 'meta_ads' | 'direct_mail' | 'out_of_house';
+export type LeadSource = 'unknown' | 'webflow_form' | 'meta_ads' | 'google_lsa' | 'referral' | 'out_of_home' | 'phone' | 'email' | 'text' | 'organic_search';
 
 // Project Status (post-sale journey - after deposit paid)
 // Note: Legacy pre-sale values kept for backward compatibility during migration
@@ -70,6 +74,7 @@ export interface Customer {
   requestType: RequestType;
   preferredContact: PreferredContact;
   status: CustomerStatus;
+  statusChangedAt?: string;
   tags: string[];
   salespersonId: string;
   notes: string;
@@ -165,9 +170,10 @@ export interface Note {
 export interface Activity {
   id: string;
   projectId: string;
-  type: 'status_change' | 'note_added' | 'message_inbound' | 'message_outbound' | 'proposal_sent' | 'proposal_signed' | 'payment_received';
+  type: 'status_change' | 'note_added' | 'message_inbound' | 'message_outbound' | 'proposal_sent' | 'proposal_signed' | 'payment_received' | 'call_recording' | 'voicemail' | 'text_inbound' | 'text_outbound' | 'email_inbound' | 'email_outbound';
   content: string;
   from?: string;
+  duration?: number; // For calls/voicemails in seconds
   createdAt: string;
 }
 
@@ -297,11 +303,20 @@ export interface User {
 // Project Status Config (admin-manageable)
 export type ProjectPhase = 'permits' | 'materials' | 'scheduling' | 'installation' | 'close_out';
 
+// Status Trigger - how a status change is initiated
+export type StatusTrigger =
+  | 'manual'              // Staff manually changes status
+  | 'calendly_scheduled'  // Customer books via Calendly in portal
+  | 'portal_signed'       // Customer signs document in portal
+  | 'deposit_paid'        // Deposit payment received
+  | 'final_payment_paid'; // Final balance payment received
+
 export interface ProjectStatusConfig {
   id: string;
   name: string;
   customerLabel: string;
   phase: ProjectPhase;
+  trigger?: StatusTrigger;  // How this status is triggered (default: manual)
   triggerNote: string;
   sortOrder: number;
   bgColor: string;   // hex e.g. "#dbeafe"
@@ -345,12 +360,23 @@ export interface DocumentCategory {
   isActive: boolean;
 }
 
-// Customer Status Config
+// Customer Status Config (pre-sale lead journey)
 export interface CustomerStatusConfig {
   id: string;
   name: string;
+  customerLabel: string;  // What customer sees in portal
+  trigger?: StatusTrigger; // How this status is triggered (default: manual)
+  triggerNote: string;    // Description of when this status is used
   sortOrder: number;
+  bgColor: string;        // hex e.g. "#dbeafe"
+  textColor: string;      // hex e.g. "#1d4ed8"
   isActive: boolean;
+  hasPortalPage: boolean; // Whether this status has a customer-facing portal page
+  notifications: {
+    slack: { enabled: boolean; channel: string };
+    sms: { enabled: boolean; template: string };
+    email: { enabled: boolean; subject: string; body: string };
+  };
 }
 
 // Request Type Config
@@ -358,6 +384,9 @@ export interface RequestTypeConfig {
   id: string;
   name: string;
   value: RequestType;
+  description?: string;
+  bgColor?: string;
+  textColor?: string;
   sortOrder: number;
   isActive: boolean;
 }
@@ -381,7 +410,7 @@ export interface ViewFilterConfig {
 export interface ViewConfig {
   id: string;
   name: string;
-  viewType: 'sales_dashboard' | 'admin_dashboard' | 'customers' | 'project_tracking';
+  viewType: 'sales_dashboard' | 'admin_dashboard' | 'customers' | 'project_tracking_presale' | 'project_tracking_postsale';
   tabId: string;
   columns: ViewColumnConfig[];
   filters: ViewFilterConfig[];

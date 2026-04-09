@@ -12,7 +12,7 @@ const availableColumns = [
   { id: 'address', label: 'Address', field: 'address' },
   { id: 'customerStatus', label: 'Customer Status', field: 'customerStatus' },
   { id: 'projectStatus', label: 'Project Status', field: 'status' },
-  { id: 'buildType', label: 'Build Type', field: 'buildType' },
+  { id: 'buildType', label: 'Job Type', field: 'buildType' },
   { id: 'salesperson', label: 'Salesperson', field: 'salespersonId' },
   { id: 'daysInStatus', label: 'Days in Status', field: 'daysInStatus' },
   { id: 'lastContacted', label: 'Last Contacted', field: 'lastContacted' },
@@ -22,6 +22,7 @@ const availableColumns = [
   { id: 'requestType', label: 'Request Type', field: 'requestType' },
   { id: 'notes', label: 'Notes', field: 'notes' },
   { id: 'contact', label: 'Contact Actions', field: 'contact' },
+  { id: 'portal', label: 'Portal', field: 'portalLive' },
 ];
 
 // Build types
@@ -35,6 +36,8 @@ const buildTypes = [
 const dashboardTypes = [
   { id: 'sales_dashboard', label: 'Sales Dashboard' },
   { id: 'admin_dashboard', label: 'Admin Dashboard' },
+  { id: 'project_tracking_presale', label: 'Project Tracking (Pre-Sale)' },
+  { id: 'project_tracking_postsale', label: 'Project Tracking (Post-Sale)' },
 ];
 
 // Default views matching actual dashboard tabs
@@ -48,7 +51,7 @@ const defaultViews: ViewConfig[] = [
     columns: [
       { id: '1', field: 'name', label: 'Customer', visible: true, sortOrder: 1 },
       { id: '2', field: 'address', label: 'Address', visible: true, sortOrder: 2 },
-      { id: '3', field: 'buildType', label: 'Build Type', visible: true, sortOrder: 3 },
+      { id: '3', field: 'buildType', label: 'Job Type', visible: true, sortOrder: 3 },
       { id: '4', field: 'customerStatus', label: 'Customer Status', visible: true, sortOrder: 4 },
       { id: '5', field: 'status', label: 'Project Status', visible: true, sortOrder: 5 },
       { id: '6', field: 'daysInStatus', label: 'Days in Status', visible: true, sortOrder: 6 },
@@ -70,7 +73,7 @@ const defaultViews: ViewConfig[] = [
       { id: '1', field: 'salesAppointment', label: 'Date & Time', visible: true, sortOrder: 1 },
       { id: '2', field: 'name', label: 'Customer', visible: true, sortOrder: 2 },
       { id: '3', field: 'address', label: 'Address', visible: true, sortOrder: 3 },
-      { id: '4', field: 'buildType', label: 'Build Type', visible: true, sortOrder: 4 },
+      { id: '4', field: 'buildType', label: 'Job Type', visible: true, sortOrder: 4 },
       { id: '5', field: 'status', label: 'Project Status', visible: true, sortOrder: 5 },
       { id: '6', field: 'contact', label: 'Contact', visible: true, sortOrder: 6 },
     ],
@@ -170,7 +173,7 @@ const defaultViews: ViewConfig[] = [
     columns: [
       { id: '1', field: 'name', label: 'Customer', visible: true, sortOrder: 1 },
       { id: '2', field: 'address', label: 'Address', visible: true, sortOrder: 2 },
-      { id: '3', field: 'buildType', label: 'Build Type', visible: true, sortOrder: 3 },
+      { id: '3', field: 'buildType', label: 'Job Type', visible: true, sortOrder: 3 },
       { id: '4', field: 'salespersonId', label: 'Salesperson', visible: true, sortOrder: 4 },
       { id: '5', field: 'createdAt', label: 'Received', visible: true, sortOrder: 5 },
       { id: '6', field: 'contact', label: 'Contact', visible: true, sortOrder: 6 },
@@ -257,6 +260,47 @@ const defaultViews: ViewConfig[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
+  // Project Tracking - Pre-Sale View
+  {
+    id: 'project-tracking-presale',
+    name: 'Project Tracking (Pre-Sale)',
+    viewType: 'project_tracking_presale',
+    tabId: 'project_tracking_presale',
+    columns: [
+      { id: '1', field: 'name', label: 'Customer', visible: true, sortOrder: 1 },
+      { id: '2', field: 'salespersonId', label: 'Salesperson', visible: true, sortOrder: 2 },
+      { id: '3', field: 'address', label: 'Address', visible: true, sortOrder: 3 },
+      { id: '4', field: 'buildType', label: 'Job Type', visible: true, sortOrder: 4 },
+      { id: '5', field: 'customerStatus', label: 'Customer Status', visible: true, sortOrder: 5 },
+      { id: '6', field: 'status', label: 'Project Status', visible: true, sortOrder: 6 },
+      { id: '7', field: 'portalLive', label: 'Portal', visible: true, sortOrder: 7 },
+      { id: '8', field: 'contact', label: 'Contact', visible: true, sortOrder: 8 },
+    ],
+    filters: [],
+    isDefault: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  // Project Tracking - Post-Sale View
+  {
+    id: 'project-tracking-postsale',
+    name: 'Project Tracking (Post-Sale)',
+    viewType: 'project_tracking_postsale',
+    tabId: 'project_tracking_postsale',
+    columns: [
+      { id: '1', field: 'name', label: 'Customer', visible: true, sortOrder: 1 },
+      { id: '2', field: 'address', label: 'Address', visible: true, sortOrder: 2 },
+      { id: '3', field: 'buildType', label: 'Job Type', visible: true, sortOrder: 3 },
+      { id: '4', field: 'customerStatus', label: 'Customer Status', visible: true, sortOrder: 4 },
+      { id: '5', field: 'status', label: 'Project Status', visible: true, sortOrder: 5 },
+      { id: '6', field: 'portalLive', label: 'Portal', visible: true, sortOrder: 6 },
+      { id: '7', field: 'contact', label: 'Contact', visible: true, sortOrder: 7 },
+    ],
+    filters: [],
+    isDefault: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 ];
 
 export const DashboardViewsPage: React.FC = () => {
@@ -304,6 +348,8 @@ export const DashboardViewsPage: React.FC = () => {
 
   const salesViews = views.filter(v => v.viewType === 'sales_dashboard');
   const adminViews = views.filter(v => v.viewType === 'admin_dashboard');
+  const preSaleTrackingViews = views.filter(v => v.viewType === 'project_tracking_presale');
+  const postSaleTrackingViews = views.filter(v => v.viewType === 'project_tracking_postsale');
 
   return (
     <PageLayout>
@@ -356,6 +402,26 @@ export const DashboardViewsPage: React.FC = () => {
           >
             Admin Dashboard ({adminViews.length})
           </button>
+          <button
+            onClick={() => setFilterDashboard('project_tracking_presale')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+              filterDashboard === 'project_tracking_presale'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            Pre-Sale ({preSaleTrackingViews.length})
+          </button>
+          <button
+            onClick={() => setFilterDashboard('project_tracking_postsale')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+              filterDashboard === 'project_tracking_postsale'
+                ? 'bg-teal-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            Post-Sale ({postSaleTrackingViews.length})
+          </button>
         </div>
       </div>
 
@@ -370,9 +436,16 @@ export const DashboardViewsPage: React.FC = () => {
                     <span className={`px-2 py-0.5 text-xs font-medium rounded ${
                       view.viewType === 'sales_dashboard'
                         ? 'bg-blue-100 text-blue-700'
-                        : 'bg-purple-100 text-purple-700'
+                        : view.viewType === 'admin_dashboard'
+                        ? 'bg-purple-100 text-purple-700'
+                        : view.viewType === 'project_tracking_presale'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-teal-100 text-teal-700'
                     }`}>
-                      {view.viewType === 'sales_dashboard' ? 'Sales' : 'Admin'}
+                      {view.viewType === 'sales_dashboard' ? 'Sales'
+                        : view.viewType === 'admin_dashboard' ? 'Admin'
+                        : view.viewType === 'project_tracking_presale' ? 'Pre-Sale'
+                        : 'Post-Sale'}
                     </span>
                     {view.isDefault && (
                       <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded">
@@ -402,7 +475,7 @@ export const DashboardViewsPage: React.FC = () => {
                           let label = filter.field;
                           if (filter.field === 'status') label = 'Project Status';
                           if (filter.field === 'customerStatus') label = 'Customer Status';
-                          if (filter.field === 'buildType') label = 'Build Type';
+                          if (filter.field === 'buildType') label = 'Job Type';
 
                           return (
                             <span key={idx} className="px-2 py-0.5 bg-purple-50 text-purple-700 text-xs rounded">
@@ -468,8 +541,8 @@ interface ViewEditModalProps {
 
 const ViewEditModal: React.FC<ViewEditModalProps> = ({ view, onSave, onClose }) => {
   const [name, setName] = useState(view?.name || '');
-  const [viewType, setViewType] = useState<'sales_dashboard' | 'admin_dashboard'>(
-    (view?.viewType as 'sales_dashboard' | 'admin_dashboard') || 'sales_dashboard'
+  const [viewType, setViewType] = useState<'sales_dashboard' | 'admin_dashboard' | 'project_tracking_presale' | 'project_tracking_postsale'>(
+    (view?.viewType as 'sales_dashboard' | 'admin_dashboard' | 'project_tracking_presale' | 'project_tracking_postsale') || 'sales_dashboard'
   );
   const [columns, setColumns] = useState<ViewColumnConfig[]>(
     view?.columns || availableColumns.map((c, i) => ({
@@ -572,8 +645,9 @@ const ViewEditModal: React.FC<ViewEditModalProps> = ({ view, onSave, onClose }) 
 
   // Get pre-sale and post-sale statuses for display
   const preSaleStatuses = customerStatuses.filter(s =>
-    ['new_lead', 'contact_attempted', 'contacted', 'repair_scheduled', 'quote_scheduled',
-     'building_proposal', 'proposal_sent', 'awaiting_deposit', 'won', 'lost'].includes(s.id)
+    ['new_lead', 'contact_attempted', 'contacted', 'needs_qualifying', 'quote_scheduled',
+     'building_proposal', 'proposal_sent', 'awaiting_deposit', 'active_project', 'complete',
+     'quote_expired', 'lost'].includes(s.id)
   );
 
   const postSaleStatuses = projectStatuses.filter(s => s.phase === 'post_sale');
@@ -598,7 +672,7 @@ const ViewEditModal: React.FC<ViewEditModalProps> = ({ view, onSave, onClose }) 
             <label className="block text-sm font-medium text-gray-700 mb-1">Dashboard</label>
             <select
               value={viewType}
-              onChange={e => setViewType(e.target.value as 'sales_dashboard' | 'admin_dashboard')}
+              onChange={e => setViewType(e.target.value as 'sales_dashboard' | 'admin_dashboard' | 'project_tracking_presale' | 'project_tracking_postsale')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               disabled={view?.isDefault}
             >
@@ -703,9 +777,9 @@ const ViewEditModal: React.FC<ViewEditModalProps> = ({ view, onSave, onClose }) 
             </div>
           </div>
 
-          {/* Build Type Filter */}
+          {/* Job Type Filter */}
           <div>
-            <p className="text-xs text-gray-500 mb-2">Build Type</p>
+            <p className="text-xs text-gray-500 mb-2">Job Type</p>
             <div className="flex flex-wrap gap-2">
               {buildTypes.map(type => (
                 <button

@@ -6,7 +6,7 @@ import { Table } from '../ui/Table';
 import { Sidebar, SidebarSection, CheckboxFilter } from '../layout/Sidebar';
 import { CustomerForm } from './CustomerForm';
 import { useData } from '../../context/DataContext';
-import { Customer, CustomerStatus, ProjectStatus, BuildType } from '../../types';
+import { Customer, CustomerStatus, ProjectStatus, BuildType, LeadSource } from '../../types';
 
 // Post-sale project statuses for sidebar filter
 const postSaleStatuses = [
@@ -28,6 +28,20 @@ const postSaleStatuses = [
   { id: 'final_payment_due', label: 'Final Payment Due', phase: 'closeout' },
   { id: 'requesting_review', label: 'Requesting Review', phase: 'closeout' },
   { id: 'complete', label: 'Complete', phase: 'closeout' },
+];
+
+// Lead source options
+const leadSourceOptions = [
+  { value: 'unknown', label: 'Unknown' },
+  { value: 'webflow_form', label: 'WebFlow Form' },
+  { value: 'meta_ads', label: 'Meta Ads' },
+  { value: 'google_lsa', label: 'Google LSA' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'out_of_home', label: 'Out of Home' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'email', label: 'Email' },
+  { value: 'text', label: 'Text' },
+  { value: 'organic_search', label: 'Organic Search' },
 ];
 
 export const CustomerList: React.FC = () => {
@@ -195,36 +209,6 @@ export const CustomerList: React.FC = () => {
           })}
         </SidebarSection>
 
-        <SidebarSection title="Salesperson">
-          {salespeople.map(sp => {
-            const count = customers.filter(c => c.salespersonId === sp.id).length;
-            return (
-              <CheckboxFilter
-                key={sp.id}
-                label={sp.name}
-                checked={selectedSalespeople.includes(sp.id)}
-                onChange={(checked) => handleSalespersonToggle(sp.id, checked)}
-                count={count}
-              />
-            );
-          })}
-        </SidebarSection>
-
-        <SidebarSection title="Build Type">
-          {buildTypeOptions.map(option => {
-            const count = projects.filter(p => p.buildType === option.value).length;
-            return (
-              <CheckboxFilter
-                key={option.value}
-                label={option.label}
-                checked={selectedBuildTypes.includes(option.value as BuildType)}
-                onChange={(checked) => handleBuildTypeToggle(option.value as BuildType, checked)}
-                count={count}
-              />
-            );
-          })}
-        </SidebarSection>
-
         <SidebarSection title="Project Status (Post-Sale)">
           {/* Permits */}
           <button
@@ -341,6 +325,36 @@ export const CustomerList: React.FC = () => {
             );
           })}
         </SidebarSection>
+
+        <SidebarSection title="Salesperson">
+          {salespeople.map(sp => {
+            const count = customers.filter(c => c.salespersonId === sp.id).length;
+            return (
+              <CheckboxFilter
+                key={sp.id}
+                label={sp.name}
+                checked={selectedSalespeople.includes(sp.id)}
+                onChange={(checked) => handleSalespersonToggle(sp.id, checked)}
+                count={count}
+              />
+            );
+          })}
+        </SidebarSection>
+
+        <SidebarSection title="Job Type">
+          {buildTypeOptions.map(option => {
+            const count = projects.filter(p => p.buildType === option.value).length;
+            return (
+              <CheckboxFilter
+                key={option.value}
+                label={option.label}
+                checked={selectedBuildTypes.includes(option.value as BuildType)}
+                onChange={(checked) => handleBuildTypeToggle(option.value as BuildType, checked)}
+                count={count}
+              />
+            );
+          })}
+        </SidebarSection>
       </Sidebar>
 
       {/* Main Content */}
@@ -401,6 +415,7 @@ export const CustomerList: React.FC = () => {
                         value={customer.status}
                         options={statusOptions}
                         onChange={(value) => handleStatusChange(customer.id, value as CustomerStatus)}
+                        statusType="customer"
                       />
                     </div>
                   );
@@ -426,7 +441,7 @@ export const CustomerList: React.FC = () => {
               },
               {
                 key: 'buildType',
-                header: 'Build Type',
+                header: 'Job Type',
                 render: (customer) => {
                   const customerProjects = projects.filter(p => p.customerId === customer.id);
                   const latestProject = customerProjects[0];
@@ -437,6 +452,24 @@ export const CustomerList: React.FC = () => {
                         options={buildTypeOptions}
                         value={latestProject.buildType || 'new_build'}
                         onChange={(value) => updateProject(latestProject.id, { buildType: value as BuildType })}
+                      />
+                    </div>
+                  );
+                },
+              },
+              {
+                key: 'leadSource',
+                header: 'Lead Source',
+                render: (customer) => {
+                  const customerProjects = projects.filter(p => p.customerId === customer.id);
+                  const latestProject = customerProjects[0];
+                  if (!latestProject) return <span className="text-gray-400 text-sm">-</span>;
+                  return (
+                    <div onClick={(e) => e.stopPropagation()} style={{ minWidth: '120px' }}>
+                      <Dropdown
+                        options={leadSourceOptions}
+                        value={latestProject.leadSource || 'unknown'}
+                        onChange={(value) => updateProject(latestProject.id, { leadSource: value as LeadSource })}
                       />
                     </div>
                   );
@@ -458,26 +491,6 @@ export const CustomerList: React.FC = () => {
                         onChange={(value) => updateCustomer(customer.id, { salespersonId: value })}
                         placeholder="Assign..."
                       />
-                    </div>
-                  );
-                },
-              },
-              {
-                key: 'daysInStatus',
-                header: 'Days in Status',
-                render: (customer) => {
-                  const customerProjects = projects.filter(p => p.customerId === customer.id);
-                  const latestProject = customerProjects[0];
-                  if (!latestProject) return <span className="text-gray-400">-</span>;
-                  const statusDate = latestProject.statusChangedAt
-                    ? new Date(latestProject.statusChangedAt)
-                    : new Date(latestProject.createdAt);
-                  const days = Math.floor((Date.now() - statusDate.getTime()) / (1000 * 60 * 60 * 24));
-                  return (
-                    <div className="text-center">
-                      <span className={days > 7 ? 'text-orange-600 font-medium' : 'text-gray-600'}>
-                        {days}
-                      </span>
                     </div>
                   );
                 },

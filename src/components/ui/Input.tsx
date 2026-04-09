@@ -9,13 +9,14 @@ export const Input: React.FC<InputProps> = ({
   label,
   error,
   className = '',
+  required,
   ...props
 }) => {
   return (
     <div className="w-full">
       {label && (
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label}
+          {label}{required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
       )}
       <input
@@ -25,6 +26,7 @@ export const Input: React.FC<InputProps> = ({
           ${error ? 'border-red-300' : 'border-gray-300'}
           ${className}
         `}
+        required={required}
         {...props}
       />
       {error && (

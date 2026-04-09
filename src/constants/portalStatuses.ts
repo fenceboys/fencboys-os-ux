@@ -49,12 +49,6 @@ export const getCustomerStatusPortalContent = (
         interactiveType: 'calendly_booking',
       };
 
-    case 'repair_scheduled':
-      return {
-        title: 'Repair Visit Scheduled',
-        description: `Your repair visit is scheduled for ${formatDate(appointmentDate)}. ${salespersonName || 'Our team'} will assess the repair and discuss your options.`,
-      };
-
     case 'quote_scheduled':
       return {
         title: 'Quote Visit Scheduled',
@@ -83,16 +77,29 @@ export const getCustomerStatusPortalContent = (
         interactiveType: 'deposit_payment',
       };
 
-    case 'won':
+    case 'active_project':
+    case 'won': // Legacy
       return {
         title: 'Welcome to the Fence Boys Family!',
         description: 'Your project is officially underway. Check back here for updates on permits, materials, and installation.',
+      };
+
+    case 'complete':
+      return {
+        title: 'Project Complete!',
+        description: 'Thank you for choosing Fence Boys! Your fence project is complete. Enjoy your new fence!',
       };
 
     case 'lost':
       return {
         title: 'Project Closed',
         description: 'This project has been closed. If you\'d like to restart your fence project, please contact us.',
+      };
+
+    case 'quote_expired':
+      return {
+        title: 'Your Quote Has Expired',
+        description: 'Your proposal has expired. Give us a call or send us a text to get a fresh quote for your fence project.',
       };
 
     default:
@@ -132,6 +139,14 @@ export const getProjectStatusPortalContent = (
         description: 'We\'re preparing all the necessary documents to submit your permit application to the city.',
       };
 
+    case 'customer_docs_needed':
+      return {
+        title: 'Documents Required',
+        description: 'We need some additional documents from you to proceed with your permit application.',
+        isInteractive: true,
+        interactiveType: 'document_upload',
+      };
+
     case 'permit_submitted':
       return {
         title: 'Permit Submitted',
@@ -162,6 +177,12 @@ export const getProjectStatusPortalContent = (
         description: 'Your fence materials have been ordered and are on the way. We\'ll be in touch once they arrive to schedule your installation.',
       };
 
+    case 'scheduling_installation':
+      return {
+        title: 'Scheduling Your Installation',
+        description: 'Your materials have arrived! We\'re coordinating with our crews to schedule your fence installation.',
+      };
+
     case 'installation_scheduled':
       return {
         title: 'Installation Scheduled!',
@@ -178,6 +199,12 @@ export const getProjectStatusPortalContent = (
       return {
         title: 'Installation in Progress',
         description: 'Your fence is being built! Our crew is working hard to complete your installation.',
+      };
+
+    case 'scheduling_walkthrough':
+      return {
+        title: 'Scheduling Your Walkthrough',
+        description: 'Installation is complete! We\'re scheduling your final walkthrough to review the work together.',
       };
 
     case 'walkthrough_scheduled':
@@ -198,6 +225,14 @@ export const getProjectStatusPortalContent = (
         description: 'Your fence project is complete! Please submit your final payment to close out the project.',
         isInteractive: true,
         interactiveType: 'final_payment',
+      };
+
+    case 'requesting_review':
+      return {
+        title: 'Thank You!',
+        description: 'Thank you for choosing Fence Boys! We hope you love your new fence. Would you mind leaving us a review?',
+        isInteractive: true,
+        interactiveType: 'review_request',
       };
 
     case 'complete':

@@ -7,7 +7,6 @@ interface ContactActionsProps {
   phone: string;
   email: string;
   customerName?: string;
-  size?: 'sm' | 'md';
   className?: string;
 }
 
@@ -17,7 +16,6 @@ export const ContactActions: React.FC<ContactActionsProps> = ({
   phone,
   email,
   customerName,
-  size = 'md',
   className = '',
 }) => {
   const { users } = useData();
@@ -61,12 +59,13 @@ export const ContactActions: React.FC<ContactActionsProps> = ({
     window.open(gmailUrl, '_blank');
   };
 
-  const buttonSize = size === 'sm' ? 'text-xs px-2 py-1' : 'text-sm px-3 py-1.5';
-  const iconSize = size === 'sm' ? 'w-3 h-3' : 'w-4 h-4';
+  // Match PillDropdown sizing for consistency
+  const buttonSize = 'text-sm px-3 py-1.5';
+  const iconSize = 'w-3 h-3';
 
   return (
     <>
-      <div className={`flex items-center gap-1 ${className}`}>
+      <div className={`flex items-center gap-1.5 ${className}`}>
         {/* Call Button */}
         <button
           onClick={handleCallClick}

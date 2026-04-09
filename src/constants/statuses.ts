@@ -15,25 +15,28 @@ export interface ProjectStatusInfo {
   sortOrder: number;
 }
 
-// Customer statuses (Lead Status - pre-sale journey)
-// New statuses for the updated workflow
+// Customer statuses (full customer journey)
 export const customerStatuses: CustomerStatusInfo[] = [
+  // Pre-sale
   { id: 'new_lead', label: 'New Lead', color: 'gray', sortOrder: 1 },
   { id: 'contact_attempted', label: 'Contact Attempted', color: 'yellow', sortOrder: 2 },
   { id: 'contacted', label: 'Contacted', color: 'blue', sortOrder: 3 },
-  { id: 'repair_scheduled', label: 'Repair Scheduled', color: 'purple', sortOrder: 4 },
+  { id: 'needs_qualifying', label: 'Needs Qualifying', color: 'orange', sortOrder: 4 },
   { id: 'quote_scheduled', label: 'Quote Scheduled', color: 'purple', sortOrder: 5 },
   { id: 'building_proposal', label: 'Building Proposal', color: 'yellow', sortOrder: 6 },
-  { id: 'proposal_sent', label: 'Proposal Sent', color: 'orange', sortOrder: 7 },
-  { id: 'awaiting_deposit', label: 'Awaiting Deposit', color: 'orange', sortOrder: 8 },
-  { id: 'won', label: 'Won', color: 'green', sortOrder: 9 },
-  { id: 'lost', label: 'Lost', color: 'red', sortOrder: 10 },
+  { id: 'proposal_sent', label: 'Proposal Sent', color: 'green', sortOrder: 7 },
+  { id: 'awaiting_deposit', label: 'Awaiting Deposit', color: 'green', sortOrder: 8 },
+  // Post-sale (active customer)
+  { id: 'active_project', label: 'Active Project', color: 'green', sortOrder: 9 },
+  { id: 'complete', label: 'Complete', color: 'green', sortOrder: 10 },
+  // Terminal states
+  { id: 'quote_expired', label: 'Quote Expired', color: 'red', sortOrder: 11 },
+  { id: 'lost', label: 'Lost', color: 'red', sortOrder: 12 },
   // Legacy statuses for backward compatibility
   { id: 'lead', label: 'Lead', color: 'blue', sortOrder: 100 },
-  { id: 'needs_qualifying', label: 'Needs Qualifying', color: 'yellow', sortOrder: 101 },
+  { id: 'won', label: 'Won', color: 'green', sortOrder: 101 },
   { id: 'unqualified_lead', label: 'Unqualified Lead', color: 'red', sortOrder: 102 },
   { id: 'active', label: 'Active', color: 'green', sortOrder: 103 },
-  { id: 'complete', label: 'Complete', color: 'gray', sortOrder: 104 },
 ];
 
 export const getCustomerStatusInfo = (statusId: CustomerStatus): CustomerStatusInfo | undefined => {
@@ -76,12 +79,20 @@ export const getStatusesByPhase = (phase: 'pre_sale' | 'post_sale'): ProjectStat
 export const preSaleStatuses = getStatusesByPhase('pre_sale');
 export const postSaleStatuses = getStatusesByPhase('post_sale');
 
-// Helper to check if customer is in pre-sale (not yet won)
+// Helper to check if customer is in pre-sale (not yet active_project)
 export const isPreSale = (customerStatus: CustomerStatus): boolean => {
-  return customerStatus !== 'won' && customerStatus !== 'lost' && customerStatus !== 'active' && customerStatus !== 'complete';
+  return customerStatus !== 'active_project' && customerStatus !== 'complete' &&
+         customerStatus !== 'lost' && customerStatus !== 'quote_expired' &&
+         // Legacy values
+         customerStatus !== 'won' && customerStatus !== 'active';
 };
 
-// Helper to check if customer is active (won, project in progress)
+// Helper to check if customer is active (has active project)
 export const isActive = (customerStatus: CustomerStatus): boolean => {
-  return customerStatus === 'won' || customerStatus === 'active';
+  return customerStatus === 'active_project' || customerStatus === 'won' || customerStatus === 'active';
+};
+
+// Helper to check if customer has completed their project(s)
+export const isComplete = (customerStatus: CustomerStatus): boolean => {
+  return customerStatus === 'complete';
 };

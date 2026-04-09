@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Project, Salesperson, Customer } from '../../types';
-import { getPortalStatusContent } from '../../constants/portalStatuses';
-import { getStatusInfo } from '../../constants/statuses';
+import { Project, Salesperson, Customer, CustomerStatus } from '../../types';
+import { getUnifiedPortalContent } from '../../constants/portalStatuses';
+import { getStatusInfo, isPreSale } from '../../constants/statuses';
 import { Badge } from '../ui/Badge';
 import { Modal } from '../ui/Modal';
 import { MockCalendlyWidget } from './MockCalendlyWidget';
@@ -36,7 +36,16 @@ export const StatusContent: React.FC<StatusContentProps> = ({
   onRequestNewQuote,
 }) => {
   const [showNewQuoteModal, setShowNewQuoteModal] = useState(false);
+  const [showRescheduleQuoteModal, setShowRescheduleQuoteModal] = useState(false);
   const statusInfo = getStatusInfo(project.status);
+
+  // Determine which status to use: customer status for pre-sale, project status for post-sale
+  const customerStatus = (customer?.status || 'new_lead') as CustomerStatus;
+  const inPreSale = isPreSale(customerStatus);
+  // Terminal states (quote_expired, lost) also use customer status for portal content
+  const useCustomerStatusForActive = inPreSale || customerStatus === 'quote_expired' || customerStatus === 'lost';
+  // The "active status" is what we use to determine portal content
+  const activeStatus = useCustomerStatusForActive ? customerStatus : project.status;
 
   // Handle reschedule for quote
   const handleRescheduleQuote = () => {
@@ -93,11 +102,13 @@ export const StatusContent: React.FC<StatusContentProps> = ({
     </div>
   );
 
-  const content = getPortalStatusContent(
+  const content = getUnifiedPortalContent(
+    customerStatus,
     project.status,
     salesperson?.name,
     project.salesAppointment,
-    project.installationDate
+    project.installationDate,
+    project.walkthroughDate
   );
 
   const renderInteractiveContent = () => {
@@ -197,6 +208,340 @@ export const StatusContent: React.FC<StatusContentProps> = ({
         return null;
     }
   };
+
+  // ============================================
+  // PRE-SALE STATUS HANDLING (customer.status)
+  // When in pre-sale OR terminal states (quote_expired, lost),
+  // use customer.status to determine portal content
+  // ============================================
+  if (useCustomerStatusForActive) {
+    // For quote_scheduled, show appointment details
+    if (activeStatus === 'quote_scheduled') {
+      // Use real date or mock date for demo purposes
+      let appointmentDate: Date;
+      if (project.salesAppointment) {
+        appointmentDate = new Date(project.salesAppointment);
+      } else {
+        // Mock date: next Tuesday at 10am
+        const mockDate = new Date();
+        mockDate.setDate(mockDate.getDate() + ((2 - mockDate.getDay() + 7) % 7 || 7));
+        mockDate.setHours(10, 0, 0, 0);
+        appointmentDate = mockDate;
+      }
+
+      return (
+        <>
+          <div className="p-8 text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-1">Your Consultation is Booked</h3>
+            <p className="text-gray-500 mb-6">We'll visit your property to discuss your project</p>
+            <div className="bg-gray-50 rounded-xl py-6 px-8 mb-6">
+              <p className="text-3xl font-bold text-gray-900">
+                {appointmentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </p>
+              <p className="text-xl text-blue-600 font-semibold mt-1">
+                {appointmentDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowRescheduleQuoteModal(true)}
+              className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-lg font-medium hover:bg-gray-200 transition-colors inline-flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Need to Reschedule?
+            </button>
+            {renderContactButtons()}
+          </div>
+          <Modal isOpen={showRescheduleQuoteModal} onClose={() => setShowRescheduleQuoteModal(false)} title="Reschedule Consultation" size="sm">
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Need to change your appointment time? We'll notify your sales rep and they'll reach out to find a new time that works for you.
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Current appointment:</strong><br />
+                  {appointmentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} at {appointmentDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                </p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowRescheduleQuoteModal(false)}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRescheduleQuoteModal(false);
+                    handleRescheduleQuote();
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Request Reschedule
+                </button>
+              </div>
+            </div>
+          </Modal>
+        </>
+      );
+    }
+
+    // For building_proposal, show "we're working on it" message
+    if (activeStatus === 'building_proposal') {
+      return (
+        <div className="p-8 text-center">
+          <div className="w-24 h-24 mx-auto mb-4">
+            <img src="/fence-boys-logo.jpg" alt="Fence Boys" className="w-full h-full object-contain" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Thanks for Meeting With Us!</h3>
+          <p className="text-gray-600 mb-6 max-w-sm mx-auto">
+            We're putting together your custom pricing and proposal based on our site visit.
+          </p>
+          <div className="bg-gray-50 rounded-xl py-5 px-6 text-left max-w-sm mx-auto">
+            <p className="text-sm font-medium text-gray-900 mb-3">What happens next:</p>
+            <ul className="space-y-2 text-sm text-gray-600">
+              <li className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Your proposal will appear here when ready
+              </li>
+              <li className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Review, download, and sign online
+              </li>
+              <li className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                We'll text & email you when it's ready
+              </li>
+            </ul>
+          </div>
+          {renderContactButtons()}
+        </div>
+      );
+    }
+
+    // For proposal_sent, show proposal ready with CTA
+    if (activeStatus === 'proposal_sent') {
+      return (
+        <div className="p-8 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Your Proposal is Ready!</h3>
+          <p className="text-gray-600 mb-6 max-w-sm mx-auto">
+            We've put together a custom proposal for your fence project. Review the details and sign to get started.
+          </p>
+          <div className="bg-gray-50 rounded-xl py-5 px-6 text-left max-w-sm mx-auto mb-6">
+            <p className="text-sm font-medium text-gray-900 mb-3">How it works:</p>
+            <ul className="space-y-2 text-sm text-gray-600">
+              <li className="flex items-start gap-2">
+                <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold">1</span>
+                Open your proposal, download it if you want
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold">2</span>
+                Review the details and sign
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold">3</span>
+                Once signed, you'll be prompted to pay your deposit
+              </li>
+            </ul>
+            <p className="text-xs text-gray-500 mt-4 italic">
+              If you requested multiple quotes, please review all and ensure you sign the correct one.
+            </p>
+          </div>
+          <button
+            onClick={onSignProposal}
+            className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            Review & Sign Proposal
+          </button>
+          {renderContactButtons()}
+        </div>
+      );
+    }
+
+    // For awaiting_deposit, show signed confirmation with deposit CTA
+    if (activeStatus === 'awaiting_deposit') {
+      return (
+        <div className="p-8 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Contract Signed!</h3>
+          <p className="text-gray-600 mb-6 max-w-sm mx-auto">
+            Thank you for signing! Please pay your deposit below and we will get to work.
+          </p>
+          <div className="bg-gray-50 rounded-xl py-5 px-6 text-left max-w-sm mx-auto mb-6">
+            <p className="text-sm font-medium text-gray-900 mb-3">After your deposit:</p>
+            <ul className="space-y-2 text-sm text-gray-600">
+              <li className="flex items-start gap-2">
+                <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold">1</span>
+                We will draft and submit your permit to your local municipality
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold">2</span>
+                After permits, we order your materials
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold">3</span>
+                Once materials arrive, we schedule your installation
+              </li>
+            </ul>
+          </div>
+          <button
+            onClick={onPayDeposit}
+            className="bg-green-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors inline-flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+            Pay Deposit
+          </button>
+          {renderContactButtons()}
+        </div>
+      );
+    }
+
+    // For quote_expired, show expired notice with request new quote
+    if (activeStatus === 'quote_expired') {
+      return (
+        <>
+          <div className="p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Your Quote Has Expired</h3>
+            <p className="text-gray-600 mb-6 max-w-sm mx-auto">
+              We can only guarantee the pricing on our quotes for two weeks.
+            </p>
+            <button
+              onClick={() => setShowNewQuoteModal(true)}
+              className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Request New Quote
+            </button>
+            {renderContactButtons()}
+          </div>
+          <Modal isOpen={showNewQuoteModal} onClose={() => setShowNewQuoteModal(false)} title="Request New Quote" size="sm">
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">How would you like to proceed with your new quote?</p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleNewQuoteRequest(false)}
+                  className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+                >
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">No Changes Needed</p>
+                    <p className="text-sm text-gray-500">I want the same quote with updated pricing</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleNewQuoteRequest(true)}
+                  className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+                >
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">Request with Changes</p>
+                    <p className="text-sm text-gray-500">I'd like to discuss some changes first</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </Modal>
+        </>
+      );
+    }
+
+    // For lost, show project closed
+    if (activeStatus === 'lost') {
+      return (
+        <div className="p-8 text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Project Closed</h3>
+          <p className="text-gray-600 max-w-sm mx-auto">
+            This project has been closed. If you'd like to restart your fence project, please contact us.
+          </p>
+          {renderContactButtons()}
+        </div>
+      );
+    }
+
+    // For calendly booking statuses (contacted, new_lead, contact_attempted)
+    if (content.interactiveType === 'calendly_booking') {
+      return (
+        <div className="p-6">
+          <div className="max-w-xl mx-auto mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <h3 className="text-lg font-semibold text-gray-900">Schedule Your Appointment</h3>
+                <p className="text-sm text-gray-600">Pick a time that works for you and we'll come to you</p>
+              </div>
+            </div>
+          </div>
+          {renderInteractiveContent()}
+          {renderContactButtons()}
+        </div>
+      );
+    }
+
+    // Default pre-sale content
+    return (
+      <div className="p-8 text-center">
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">{content.title}</h3>
+        <p className="text-gray-600 leading-relaxed max-w-md mx-auto">{content.description}</p>
+        {renderInteractiveContent()}
+        {renderContactButtons()}
+      </div>
+    );
+  }
+
+  // ============================================
+  // POST-SALE STATUS HANDLING (project.status)
+  // Only reached when customer is NOT in pre-sale
+  // ============================================
 
   // For final_payment_due, show payment CTA
   if (project.status === 'final_payment_due') {
@@ -781,321 +1126,7 @@ export const StatusContent: React.FC<StatusContentProps> = ({
     );
   }
 
-  // For awaiting_deposit, show signed confirmation with deposit CTA
-  if (project.status === 'awaiting_deposit') {
-    return (
-      <div className="p-8 text-center">
-        {/* Icon */}
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-
-        {/* Title */}
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">Contract Signed!</h3>
-        <p className="text-gray-600 mb-6 max-w-sm mx-auto">
-          Thank you for signing! Please pay your deposit below and we will get to work.
-        </p>
-
-        {/* What happens next */}
-        <div className="bg-gray-50 rounded-xl py-5 px-6 text-left max-w-sm mx-auto mb-6">
-          <p className="text-sm font-medium text-gray-900 mb-3">After your deposit:</p>
-          <ul className="space-y-2 text-sm text-gray-600">
-            <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold">1</span>
-              We will draft and submit your permit to your local municipality
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold">2</span>
-              After permits, we order your materials
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold">3</span>
-              Once materials arrive, we schedule your installation
-            </li>
-          </ul>
-        </div>
-
-        {/* CTA Button */}
-        <button
-          onClick={onPayDeposit}
-          className="bg-green-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors inline-flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-          </svg>
-          Pay Deposit
-        </button>
-
-        {renderContactButtons()}
-      </div>
-    );
-  }
-
-  // For proposal_sent, show proposal ready with CTA
-  if (project.status === 'proposal_sent') {
-    return (
-      <div className="p-8 text-center">
-        {/* Icon */}
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-
-        {/* Title */}
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">Your Proposal is Ready!</h3>
-        <p className="text-gray-600 mb-6 max-w-sm mx-auto">
-          We've put together a custom proposal for your fence project. Review the details and sign to get started.
-        </p>
-
-        {/* How it works */}
-        <div className="bg-gray-50 rounded-xl py-5 px-6 text-left max-w-sm mx-auto mb-6">
-          <p className="text-sm font-medium text-gray-900 mb-3">How it works:</p>
-          <ul className="space-y-2 text-sm text-gray-600">
-            <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold">1</span>
-              Open your proposal, download it if you want
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold">2</span>
-              Review the details and sign
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold">3</span>
-              Once signed, you'll be prompted to pay your deposit
-            </li>
-          </ul>
-          <p className="text-xs text-gray-500 mt-4 italic">
-            If you requested multiple quotes, please review all and ensure you sign the correct one.
-          </p>
-        </div>
-
-        {/* CTA Button */}
-        <button
-          onClick={onSignProposal}
-          className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-          </svg>
-          Review & Sign Proposal
-        </button>
-
-        {renderContactButtons()}
-      </div>
-    );
-  }
-
-  // For building_proposal, show "we're working on it" message
-  if (project.status === 'building_proposal') {
-    return (
-      <div className="p-8 text-center">
-        {/* Logo */}
-        <div className="w-24 h-24 mx-auto mb-4">
-          <img
-            src="/fence-boys-logo.jpg"
-            alt="Fence Boys"
-            className="w-full h-full object-contain"
-          />
-        </div>
-
-        {/* Title */}
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">Thanks for Meeting With Us!</h3>
-        <p className="text-gray-600 mb-6 max-w-sm mx-auto">
-          We're putting together your custom pricing and proposal based on our site visit.
-        </p>
-
-        {/* What to expect */}
-        <div className="bg-gray-50 rounded-xl py-5 px-6 text-left max-w-sm mx-auto">
-          <p className="text-sm font-medium text-gray-900 mb-3">What happens next:</p>
-          <ul className="space-y-2 text-sm text-gray-600">
-            <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Your proposal will appear here when ready
-            </li>
-            <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Review, download, and sign online
-            </li>
-            <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              We'll text & email you when it's ready
-            </li>
-          </ul>
-        </div>
-
-        {renderContactButtons()}
-      </div>
-    );
-  }
-
-  // For quote_expired, show expired notice with request new quote
-  if (project.status === 'quote_expired') {
-    return (
-      <>
-        <div className="p-8 text-center">
-          {/* Icon */}
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-
-          {/* Title */}
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Your Quote Has Expired</h3>
-          <p className="text-gray-600 mb-6 max-w-sm mx-auto">
-            We can only guarantee the pricing on our quotes for two weeks.
-          </p>
-
-          {/* CTA Button */}
-          <button
-            onClick={() => setShowNewQuoteModal(true)}
-            className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Request New Quote
-          </button>
-
-          {renderContactButtons()}
-        </div>
-
-        {/* Request New Quote Modal */}
-        <Modal
-          isOpen={showNewQuoteModal}
-          onClose={() => setShowNewQuoteModal(false)}
-          title="Request New Quote"
-          size="sm"
-        >
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              How would you like to proceed with your new quote?
-            </p>
-
-            <div className="space-y-3">
-              <button
-                onClick={() => handleNewQuoteRequest(false)}
-                className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
-              >
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">No Changes Needed</p>
-                  <p className="text-sm text-gray-500">I want the same quote with updated pricing</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => handleNewQuoteRequest(true)}
-                className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
-              >
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Request with Changes</p>
-                  <p className="text-sm text-gray-500">I'd like to discuss some changes first</p>
-                </div>
-              </button>
-            </div>
-          </div>
-        </Modal>
-      </>
-    );
-  }
-
-  // For quote_scheduled, show appointment details
-  if (project.status === 'quote_scheduled') {
-    // Use real date or mock date for demo purposes
-    let appointmentDate: Date;
-    if (project.salesAppointment) {
-      appointmentDate = new Date(project.salesAppointment);
-    } else {
-      // Mock date: next Tuesday at 10am
-      const mockDate = new Date();
-      mockDate.setDate(mockDate.getDate() + ((2 - mockDate.getDay() + 7) % 7 || 7)); // Next Tuesday
-      mockDate.setHours(10, 0, 0, 0);
-      appointmentDate = mockDate;
-    }
-
-    return (
-      <div className="p-8 text-center">
-        {/* Icon */}
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-        </div>
-
-        {/* Title */}
-        <h3 className="text-xl font-semibold text-gray-900 mb-1">Your Consultation is Booked</h3>
-        <p className="text-gray-500 mb-6">We'll visit your property to discuss your project</p>
-
-        {/* Date/Time - Large Display */}
-        <div className="bg-gray-50 rounded-xl py-6 px-8 mb-4">
-          <p className="text-3xl font-bold text-gray-900">
-            {appointmentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </p>
-          <p className="text-xl text-blue-600 font-semibold mt-1">
-            {appointmentDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-          </p>
-        </div>
-
-        {/* Reschedule Button */}
-        <button
-          onClick={handleRescheduleQuote}
-          className="text-sm text-gray-500 hover:text-gray-700 underline mb-6"
-        >
-          Need to reschedule?
-        </button>
-
-        {renderContactButtons()}
-      </div>
-    );
-  }
-
-  // For calendly booking, show a nice header card with the CTA
-  if (content.interactiveType === 'calendly_booking') {
-    return (
-      <div className="p-6">
-        {/* Header Card */}
-        <div className="max-w-xl mx-auto mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div className="text-left">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Schedule Your Appointment
-              </h3>
-              <p className="text-sm text-gray-600">
-                Pick a time that works for you and we'll come to you
-              </p>
-            </div>
-          </div>
-        </div>
-        {renderInteractiveContent()}
-        {renderContactButtons()}
-      </div>
-    );
-  }
-
+  // Default post-sale fallback
   return (
     <div className="p-8 text-center">
       <h3 className="text-xl font-semibold text-gray-900 mb-2">{content.title}</h3>

@@ -5,14 +5,16 @@ import { Customer, RequestType, LeadSource } from '../../types';
 
 // Lead source options
 const leadSourceOptions = [
-  { value: 'webform', label: 'Webform' },
-  { value: 'email', label: 'Email' },
-  { value: 'phone', label: 'Phone' },
-  { value: 'text', label: 'Text' },
-  { value: 'google_ads', label: 'Google Ads' },
+  { value: 'unknown', label: 'Unknown' },
+  { value: 'webflow_form', label: 'WebFlow Form' },
   { value: 'meta_ads', label: 'Meta Ads' },
-  { value: 'direct_mail', label: 'Direct Mail' },
-  { value: 'out_of_house', label: 'Out of House' },
+  { value: 'google_lsa', label: 'Google LSA' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'out_of_home', label: 'Out of Home' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'email', label: 'Email' },
+  { value: 'text', label: 'Text' },
+  { value: 'organic_search', label: 'Organic Search' },
 ];
 
 interface CustomerFormProps {
@@ -49,7 +51,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ customer, onClose })
     requestType: customer?.requestType || 'build' as RequestType,
     salespersonId: customer?.salespersonId || '',
     notes: customer?.notes || '',
-    leadSource: 'webform' as LeadSource,
+    leadSource: 'unknown' as LeadSource,
   });
 
   const createCustomerAndProject = () => {
@@ -234,7 +236,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ customer, onClose })
       </div>
 
       <Textarea
-        label="Booking Notes"
+        label="Customer Notes"
         value={formData.notes}
         onChange={(e) => handleChange('notes', e.target.value)}
         rows={3}

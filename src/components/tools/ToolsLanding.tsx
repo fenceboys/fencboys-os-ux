@@ -257,11 +257,6 @@ export const ToolsLanding: React.FC = () => {
 
       case 'proposals':
         const filteredProposals = mockProposals.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
-        const proposalStats = {
-          draft: mockProposals.filter(p => p.status === 'draft').length,
-          sent: mockProposals.filter(p => p.status === 'sent').length,
-          accepted: mockProposals.filter(p => p.status === 'accepted').length,
-        };
         return (
           <div>
             <div className="flex justify-between items-center mb-6">
@@ -297,22 +292,6 @@ export const ToolsLanding: React.FC = () => {
                   </svg>
                   New Proposal
                 </Button>
-              </div>
-            </div>
-
-            {/* Stats Row */}
-            <div className="flex gap-4 mb-6">
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg">
-                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                <span className="text-sm text-gray-600">{proposalStats.draft} Draft</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                <span className="text-sm text-blue-700">{proposalStats.sent} Sent</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg">
-                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                <span className="text-sm text-green-700">{proposalStats.accepted} Accepted</span>
               </div>
             </div>
 
@@ -361,17 +340,10 @@ export const ToolsLanding: React.FC = () => {
                     onClick={() => handleItemClick(proposal)}
                     className="group cursor-pointer bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg hover:border-gray-300 transition-all"
                   >
-                    <div className="aspect-video bg-gradient-to-br from-purple-50 to-purple-100 flex items-center justify-center relative">
+                    <div className="aspect-video bg-gradient-to-br from-purple-50 to-purple-100 flex items-center justify-center">
                       <svg className="w-12 h-12 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      <span className={`absolute top-3 right-3 text-xs px-2.5 py-1 rounded-full font-medium ${
-                        proposal.status === 'accepted' ? 'bg-green-100 text-green-700' :
-                        proposal.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
-                      </span>
                     </div>
                     <div className="p-4">
                       <p className="font-medium text-gray-900 truncate group-hover:text-purple-600 transition-colors">{proposal.name}</p>
@@ -486,83 +458,55 @@ export const ToolsLanding: React.FC = () => {
                 <table className="min-w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Uploaded</th>
-                      <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="pl-5 pr-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Uploaded</th>
+                      <th className="pl-4 pr-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {filteredDocs.map((doc) => {
-                      const getCustomerStatusBadge = (status: string | undefined) => {
-                        const styles: Record<string, string> = {
-                          lead: 'bg-yellow-100 text-yellow-700',
-                          needs_qualifying: 'bg-orange-100 text-orange-700',
-                          unqualified_lead: 'bg-gray-100 text-gray-700',
-                          active: 'bg-green-100 text-green-700',
-                          complete: 'bg-blue-100 text-blue-700',
-                        };
-                        const labels: Record<string, string> = {
-                          lead: 'Lead',
-                          needs_qualifying: 'Needs Qualifying',
-                          unqualified_lead: 'Unqualified',
-                          active: 'Active',
-                          complete: 'Complete',
-                        };
-                        return status ? (
-                          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${styles[status] || 'bg-gray-100 text-gray-700'}`}>
-                            {labels[status] || status}
-                          </span>
-                        ) : <span className="text-gray-400">—</span>;
-                      };
-
-                      return (
-                        <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center">
-                              <div className="p-2 bg-orange-100 rounded-lg mr-3">
-                                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                </svg>
-                              </div>
-                              <span className="font-medium text-gray-900">{doc.name}</span>
+                    {filteredDocs.map((doc) => (
+                      <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="pl-5 pr-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
+                              <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                              </svg>
                             </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            {doc.customer ? (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedCustomerId(doc.customer!.id);
-                                }}
-                                className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                              >
-                                {doc.customer.name}
-                              </button>
-                            ) : (
-                              <span className="text-gray-400">—</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            {getCustomerStatusBadge(doc.customer?.status)}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="px-2.5 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full capitalize">{doc.category}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-sm text-gray-500">{new Date(doc.createdAt).toLocaleDateString()}</span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              <button className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">View</button>
-                              <button className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">Delete</button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            <span className="font-medium text-gray-900">{doc.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {doc.customer ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCustomerId(doc.customer!.id);
+                              }}
+                              className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                            >
+                              {doc.customer.name}
+                            </button>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-full capitalize">{doc.category}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm text-gray-500">{new Date(doc.createdAt).toLocaleDateString()}</span>
+                        </td>
+                        <td className="pl-4 pr-5 py-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">View</button>
+                            <button className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -917,15 +861,6 @@ export const ToolsLanding: React.FC = () => {
                   year: 'numeric'
                 }) : 'Unknown'}
               </p>
-              {selectedItem?.status && (
-                <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full ${
-                  selectedItem.status === 'accepted' ? 'bg-green-100 text-green-700' :
-                  selectedItem.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-                  'bg-gray-100 text-gray-700'
-                }`}>
-                  {selectedItem.status.charAt(0).toUpperCase() + selectedItem.status.slice(1)}
-                </span>
-              )}
               {selectedItem?.category && (
                 <span className="inline-flex px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700 capitalize">
                   {selectedItem.category}
@@ -1001,62 +936,6 @@ export const ToolsLanding: React.FC = () => {
         <p className="text-gray-500 mt-2">
           Access project tools and resources to manage your fence business
         </p>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{drawings?.length || 0}</p>
-              <p className="text-xs text-gray-500">Drawings</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{proposals?.length || 0}</p>
-              <p className="text-xs text-gray-500">Proposals</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{documents?.length || 0}</p>
-              <p className="text-xs text-gray-500">Documents</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-pink-100 rounded-lg">
-              <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{photos?.length || 0}</p>
-              <p className="text-xs text-gray-500">Photos</p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Tools Grid */}

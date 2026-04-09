@@ -108,7 +108,7 @@ export const FreeNotesPanel: React.FC<FreeNotesPanelProps> = ({ projectId }) => 
 
       {/* Notes List */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">Notes</h3>
+        <h3 className="text-sm font-semibold text-gray-900 mb-4">Project Notes</h3>
         {notes.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

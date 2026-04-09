@@ -1,26 +1,17 @@
 import React, { useState } from 'react';
-import { StatCard, TabBar, StatusDropdown, Button, Modal, Dropdown, ContactActions } from '../ui';
-import { PillDropdown, buildTypeOptions, customerStatusOptions, projectStatusOptions } from '../ui/PillDropdown';
+import { StatCard, Button, Modal, ContactActions } from '../ui';
+import { PillDropdown, buildTypeOptions, customerStatusOptions, portalStatusOptions } from '../ui/PillDropdown';
 import { Table } from '../ui/Table';
 import { CustomerProjectModal } from './CustomerProjectModal';
 import { CustomerForm } from '../customers/CustomerForm';
 import { useData } from '../../context/DataContext';
-import { getStatusInfo } from '../../constants/statuses';
-import { Project, ProjectStatus, RequestType, BuildType, CustomerStatus } from '../../types';
+import { Project, BuildType, CustomerStatus } from '../../types';
 
-const tabs = [
-  { id: 'my_projects', label: 'My Leads' },
-  { id: 'quote_appointments', label: 'Quote Appointments' },
-  { id: 'new_requests', label: 'Lead Verification' },
-  { id: 'building_proposal', label: 'Building Proposal' },
-  { id: 'pending_proposals', label: 'Pending Proposals' },
-  { id: 'expired_quotes', label: 'Expired Quotes' },
-];
-
+type StatFilter = 'my_leads' | 'quote_appointments' | 'lead_verification' | 'building_proposal' | 'pending_proposals' | 'expired_quotes' | null;
 type CalendarView = 'table' | 'week' | 'month';
 
 export const SalesDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('my_projects');
+  const [selectedStat, setSelectedStat] = useState<StatFilter>('my_leads');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [notesModal, setNotesModal] = useState<{ customerId: string; customerName: string; notes: string } | null>(null);
   const [calendarView, setCalendarView] = useState<CalendarView>('table');
@@ -33,42 +24,99 @@ export const SalesDashboard: React.FC = () => {
     return config?.name || requestType;
   };
 
-  // Request type options for dropdown
-  const requestTypeOptions = requestTypeConfigs
-    .filter(t => t.isActive)
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map(t => ({ value: t.value, label: t.name }));
+  // Pre-sale customer statuses (everything before won/lost)
+  const preSaleStatuses = [
+    'new_lead',
+    'contact_attempted',
+    'contacted',
+    'needs_qualifying',
+    'quote_scheduled',
+    'building_proposal',
+    'proposal_sent',
+    'awaiting_deposit',
+    'quote_expired',
+  ];
 
-  // Salespeople only see projects where customer status is 'lead' (pre-sale)
-  const leadProjects = projects.filter(p => {
+  // Filter functions for each stat - ALL based on Customer Status
+  const getMyLeads = () => projects.filter(p => {
     const customer = getCustomerById(p.customerId);
-    return customer?.status === 'lead';
+    return customer && preSaleStatuses.includes(customer.status);
   });
 
-  // Project status options for dropdowns (post-sale only)
-  const projectStatusDropdownOptions = projectStatusOptions.map(s => ({
-    value: s.value,
-    label: s.label,
-  }));
+  const getQuoteAppointments = () => {
+    return projects.filter(p => {
+      const customer = getCustomerById(p.customerId);
+      return customer?.status === 'quote_scheduled' && p.salesAppointment;
+    }).sort((a, b) => new Date(a.salesAppointment!).getTime() - new Date(b.salesAppointment!).getTime());
+  };
 
-  const preSaleProjects = leadProjects.filter(p => {
-    const status = getStatusInfo(p.status);
-    return status?.phase === 'pre_sale';
+  const getLeadVerification = () => projects.filter(p => {
+    const customer = getCustomerById(p.customerId);
+    return customer?.status === 'needs_qualifying';
   });
 
-  const quoteScheduledCount = leadProjects.filter(p => p.status === 'quote_scheduled').length;
+  const getBuildingProposal = () => projects.filter(p => {
+    const customer = getCustomerById(p.customerId);
+    return customer?.status === 'building_proposal';
+  });
 
-  const pendingProposals = leadProjects.filter(p => p.status === 'proposal_sent' || p.status === 'awaiting_deposit');
+  const getPendingProposals = () => projects.filter(p => {
+    const customer = getCustomerById(p.customerId);
+    return customer?.status === 'proposal_sent' || customer?.status === 'awaiting_deposit';
+  });
 
-  const pipelineValue = leadProjects.reduce((sum, p) => {
-    const status = getStatusInfo(p.status);
-    if (status?.phase === 'pre_sale') return sum + 5000; // Mock value
-    return sum;
-  }, 0);
+  const getExpiredQuotes = () => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return projects.filter(p => {
+      const customer = getCustomerById(p.customerId);
+      if (customer?.status !== 'quote_expired') return false;
+      const statusDate = p.statusChangedAt ? new Date(p.statusChangedAt) : new Date(p.createdAt);
+      return statusDate >= thirtyDaysAgo;
+    });
+  };
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'my_projects':
+  // Calculate counts
+  const myLeadsCount = getMyLeads().length;
+  const quoteAppointmentsCount = getQuoteAppointments().length;
+  const leadVerificationCount = getLeadVerification().length;
+  const buildingProposalCount = getBuildingProposal().length;
+  const pendingProposalsCount = getPendingProposals().length;
+  const expiredQuotesCount = getExpiredQuotes().length;
+
+  const handleStatClick = (stat: StatFilter) => {
+    setSelectedStat(selectedStat === stat ? null : stat);
+  };
+
+  const getSectionTitle = (): string => {
+    switch (selectedStat) {
+      case 'my_leads': return 'My Leads';
+      case 'quote_appointments': return 'Quote Appointments';
+      case 'lead_verification': return 'Lead Verification';
+      case 'building_proposal': return 'Building Proposal';
+      case 'pending_proposals': return 'Pending Proposals';
+      case 'expired_quotes': return 'Expired Quotes';
+      default: return '';
+    }
+  };
+
+  const getStatFilteredProjects = (): Project[] => {
+    switch (selectedStat) {
+      case 'my_leads': return getMyLeads();
+      case 'quote_appointments': return getQuoteAppointments();
+      case 'lead_verification': return getLeadVerification();
+      case 'building_proposal': return getBuildingProposal();
+      case 'pending_proposals': return getPendingProposals();
+      case 'expired_quotes': return getExpiredQuotes();
+      default: return [];
+    }
+  };
+
+  const renderStatContent = () => {
+    const statFilteredProjects = getStatFilteredProjects();
+
+    switch (selectedStat) {
+      case 'my_leads':
         return (
           <Table<Project>
             columns={[
@@ -87,18 +135,16 @@ export const SalesDashboard: React.FC = () => {
               { key: 'address', header: 'Address' },
               {
                 key: 'buildType',
-                header: 'Build Type',
-                render: (project) => {
-                  return (
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <PillDropdown
-                        options={buildTypeOptions}
-                        value={project.buildType || 'new_build'}
-                        onChange={(value) => updateProject(project.id, { buildType: value as BuildType })}
-                      />
-                    </div>
-                  );
-                },
+                header: 'Job Type',
+                render: (project) => (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <PillDropdown
+                      options={buildTypeOptions}
+                      value={project.buildType || 'new_build'}
+                      onChange={(value) => updateProject(project.id, { buildType: value as BuildType })}
+                    />
+                  </div>
+                ),
               },
               {
                 key: 'customerStatus',
@@ -121,68 +167,17 @@ export const SalesDashboard: React.FC = () => {
                 },
               },
               {
-                key: 'status',
-                header: 'Project Status',
+                key: 'portal',
+                header: 'Portal',
                 render: (project) => (
                   <div onClick={(e) => e.stopPropagation()}>
-                    <StatusDropdown
-                      value={project.status}
-                      options={projectStatusDropdownOptions}
-                      onChange={(value) => updateProject(project.id, { status: value as ProjectStatus })}
+                    <PillDropdown
+                      options={portalStatusOptions}
+                      value={project.portalLive ? 'open' : 'closed'}
+                      onChange={(value) => updateProject(project.id, { portalLive: value === 'open' })}
                     />
                   </div>
                 ),
-              },
-              {
-                key: 'daysInStatus',
-                header: 'Days in Status',
-                render: (project) => {
-                  const days = Math.floor((Date.now() - new Date(project.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-                  return (
-                    <div className="text-center">
-                      <span className={days > 7 ? 'text-orange-600 font-medium' : 'text-gray-600'}>
-                        {days}
-                      </span>
-                    </div>
-                  );
-                },
-              },
-              {
-                key: 'appointment',
-                header: 'Quote Appointment',
-                render: (project) => {
-                  if (!project.salesAppointment) {
-                    return <span className="text-gray-400">Not scheduled</span>;
-                  }
-                  const date = new Date(project.salesAppointment);
-                  return (
-                    <div>
-                      <div className="text-gray-900">{date.toLocaleDateString()}</div>
-                      <div className="text-xs text-gray-500">{date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                    </div>
-                  );
-                },
-              },
-              {
-                key: 'lastContacted',
-                header: 'Last Contacted',
-                render: (project) => {
-                  const activities = getActivitiesByProjectId(project.id);
-                  const lastContact = activities
-                    .filter(a => ['message_outbound', 'message_inbound'].includes(a.type))
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-
-                  if (!lastContact) {
-                    return <span className="text-gray-400">No contact</span>;
-                  }
-
-                  const days = Math.floor((Date.now() - new Date(lastContact.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-                  return (
-                    <span className={days > 3 ? 'text-red-600 font-medium' : 'text-gray-600'}>
-                      {days === 0 ? 'Today' : days === 1 ? 'Yesterday' : `${days} days ago`}
-                    </span>
-                  );
-                },
               },
               {
                 key: 'contact',
@@ -201,17 +196,13 @@ export const SalesDashboard: React.FC = () => {
                 },
               },
             ]}
-            data={leadProjects}
+            data={statFilteredProjects}
             onRowClick={(project) => setSelectedCustomerId(project.customerId)}
             emptyMessage="No leads found"
           />
         );
 
       case 'quote_appointments':
-        const quoteScheduledProjects = leadProjects
-          .filter(p => p.status === 'quote_scheduled' && p.salesAppointment)
-          .sort((a, b) => new Date(a.salesAppointment!).getTime() - new Date(b.salesAppointment!).getTime());
-
         const renderCalendarContent = () => {
           if (calendarView === 'table') {
             return (
@@ -250,28 +241,46 @@ export const SalesDashboard: React.FC = () => {
                   { key: 'address', header: 'Address' },
                   {
                     key: 'buildType',
-                    header: 'Build Type',
+                    header: 'Job Type',
+                    render: (project) => (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <PillDropdown
+                          options={buildTypeOptions}
+                          value={project.buildType || 'new_build'}
+                          onChange={(value) => updateProject(project.id, { buildType: value as BuildType })}
+                        />
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'customerStatus',
+                    header: 'Customer Status',
                     render: (project) => {
+                      const customer = getCustomerById(project.customerId);
                       return (
                         <div onClick={(e) => e.stopPropagation()}>
                           <PillDropdown
-                            options={buildTypeOptions}
-                            value={project.buildType || 'new_build'}
-                            onChange={(value) => updateProject(project.id, { buildType: value as BuildType })}
+                            options={customerStatusOptions}
+                            value={customer?.status || 'lead'}
+                            onChange={(value) => {
+                              if (customer) {
+                                updateCustomer(customer.id, { status: value as CustomerStatus });
+                              }
+                            }}
                           />
                         </div>
                       );
                     },
                   },
                   {
-                    key: 'status',
-                    header: 'Project Status',
+                    key: 'portal',
+                    header: 'Portal',
                     render: (project) => (
                       <div onClick={(e) => e.stopPropagation()}>
-                        <StatusDropdown
-                          value={project.status}
-                          options={projectStatusDropdownOptions}
-                          onChange={(newStatus) => updateProject(project.id, { status: newStatus as ProjectStatus })}
+                        <PillDropdown
+                          options={portalStatusOptions}
+                          value={project.portalLive ? 'open' : 'closed'}
+                          onChange={(value) => updateProject(project.id, { portalLive: value === 'open' })}
                         />
                       </div>
                     ),
@@ -293,7 +302,7 @@ export const SalesDashboard: React.FC = () => {
                     },
                   },
                 ]}
-                data={quoteScheduledProjects}
+                data={statFilteredProjects}
                 onRowClick={(project) => setSelectedCustomerId(project.customerId)}
                 emptyMessage="No quote appointments scheduled"
               />
@@ -301,10 +310,9 @@ export const SalesDashboard: React.FC = () => {
           }
 
           if (calendarView === 'week') {
-            // Week view - show 7 days starting from today
             const today = new Date();
             const startOfWeek = new Date(today);
-            startOfWeek.setDate(today.getDate() - today.getDay()); // Start from Sunday
+            startOfWeek.setDate(today.getDate() - today.getDay());
 
             const weekDays = Array.from({ length: 7 }, (_, i) => {
               const date = new Date(startOfWeek);
@@ -316,7 +324,7 @@ export const SalesDashboard: React.FC = () => {
               <div className="p-4">
                 <div className="grid grid-cols-7 gap-2">
                   {weekDays.map((day, index) => {
-                    const dayAppointments = quoteScheduledProjects.filter(p => {
+                    const dayAppointments = statFilteredProjects.filter(p => {
                       const apptDate = new Date(p.salesAppointment!);
                       return apptDate.toDateString() === day.toDateString();
                     });
@@ -360,11 +368,9 @@ export const SalesDashboard: React.FC = () => {
           const daysInMonth = lastDayOfMonth.getDate();
 
           const calendarDays: (Date | null)[] = [];
-          // Add empty cells for days before the first day
           for (let i = 0; i < startDay; i++) {
             calendarDays.push(null);
           }
-          // Add all days of the month
           for (let i = 1; i <= daysInMonth; i++) {
             calendarDays.push(new Date(today.getFullYear(), today.getMonth(), i));
           }
@@ -387,7 +393,7 @@ export const SalesDashboard: React.FC = () => {
                     return <div key={`empty-${index}`} className="p-2 min-h-[100px]" />;
                   }
 
-                  const dayAppointments = quoteScheduledProjects.filter(p => {
+                  const dayAppointments = statFilteredProjects.filter(p => {
                     const apptDate = new Date(p.salesAppointment!);
                     return apptDate.toDateString() === day.toDateString();
                   });
@@ -429,7 +435,7 @@ export const SalesDashboard: React.FC = () => {
 
         return (
           <div>
-            <div className="flex items-center justify-end px-4 py-3 border-b border-gray-200">
+            <div className="flex items-center justify-start px-4 py-3 border-b border-gray-200">
               <div className="flex space-x-1">
                 <button
                   onClick={() => setCalendarView('table')}
@@ -455,12 +461,7 @@ export const SalesDashboard: React.FC = () => {
           </div>
         );
 
-      case 'new_requests':
-        // Filter projects where customer needs qualifying
-        const newLeads = projects.filter(p => {
-          const customer = getCustomerById(p.customerId);
-          return customer?.status === 'needs_qualifying';
-        });
+      case 'lead_verification':
         return (
           <Table<Project>
             columns={[
@@ -479,48 +480,34 @@ export const SalesDashboard: React.FC = () => {
               },
               { key: 'address', header: 'Address' },
               {
-                key: 'requestType',
-                header: 'Request',
-                render: (project) => {
-                  const customer = getCustomerById(project.customerId);
-                  return (
-                    <div onClick={(e) => e.stopPropagation()} style={{ minWidth: '140px' }}>
-                      <Dropdown
-                        options={requestTypeOptions}
-                        value={customer?.requestType || ''}
-                        onChange={(value) => {
-                          if (customer) {
-                            updateCustomer(customer.id, { requestType: value as RequestType });
-                          }
-                        }}
-                      />
-                    </div>
-                  );
-                },
-              },
-              {
-                key: 'status',
-                header: 'Status',
+                key: 'buildType',
+                header: 'Job Type',
                 render: (project) => (
                   <div onClick={(e) => e.stopPropagation()}>
-                    <StatusDropdown
-                      value={project.status}
-                      options={projectStatusDropdownOptions}
-                      onChange={(value) => updateProject(project.id, { status: value as ProjectStatus })}
+                    <PillDropdown
+                      options={buildTypeOptions}
+                      value={project.buildType || 'new_build'}
+                      onChange={(value) => updateProject(project.id, { buildType: value as BuildType })}
                     />
                   </div>
                 ),
               },
               {
-                key: 'daysInStatus',
-                header: 'Days in Status',
+                key: 'customerStatus',
+                header: 'Customer Status',
                 render: (project) => {
-                  const days = Math.floor((Date.now() - new Date(project.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+                  const customer = getCustomerById(project.customerId);
                   return (
-                    <div className="text-center">
-                      <span className={days > 3 ? 'text-orange-600 font-medium' : 'text-gray-600'}>
-                        {days}
-                      </span>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <PillDropdown
+                        options={customerStatusOptions}
+                        value={customer?.status || 'lead'}
+                        onChange={(value) => {
+                          if (customer) {
+                            updateCustomer(customer.id, { status: value as CustomerStatus });
+                          }
+                        }}
+                      />
                     </div>
                   );
                 },
@@ -555,6 +542,19 @@ export const SalesDashboard: React.FC = () => {
                 },
               },
               {
+                key: 'portal',
+                header: 'Portal',
+                render: (project) => (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <PillDropdown
+                      options={portalStatusOptions}
+                      value={project.portalLive ? 'open' : 'closed'}
+                      onChange={(value) => updateProject(project.id, { portalLive: value === 'open' })}
+                    />
+                  </div>
+                ),
+              },
+              {
                 key: 'contact',
                 header: 'Contact',
                 render: (project) => {
@@ -571,38 +571,97 @@ export const SalesDashboard: React.FC = () => {
                 },
               },
             ]}
-            data={newLeads}
+            data={statFilteredProjects}
             onRowClick={(project) => setSelectedCustomerId(project.customerId)}
-            emptyMessage="No new quote requests"
+            emptyMessage="No leads to verify"
           />
         );
 
       case 'building_proposal':
-        const buildingProposal = leadProjects.filter(p => p.status === 'building_proposal');
-        return buildingProposal.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <svg className="w-10 h-10 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <p className="text-sm">No proposals currently being built</p>
-          </div>
-        ) : (
-          <div className="p-3 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {buildingProposal.map((project) => {
-              const customer = getCustomerById(project.customerId);
-              return (
-                <div
-                  key={project.id}
-                  className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
-                  onClick={() => setSelectedCustomerId(project.customerId)}
-                >
-                  <div className="font-medium text-gray-900 text-sm truncate">{customer?.name}</div>
-                  <div className="text-xs text-gray-500 truncate mt-1">{project.address}</div>
-                  <span className="text-xs text-gray-400 mt-1 block">{getRequestTypeLabel(customer?.requestType || '')}</span>
-                </div>
-              );
-            })}
-          </div>
+        return (
+          <Table<Project>
+            columns={[
+              {
+                key: 'customer',
+                header: 'Customer',
+                render: (project) => {
+                  const customer = getCustomerById(project.customerId);
+                  return (
+                    <div>
+                      <div className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{customer?.name}</div>
+                      <div className="text-sm text-gray-500">{customer?.phone}</div>
+                    </div>
+                  );
+                },
+              },
+              { key: 'address', header: 'Address' },
+              {
+                key: 'buildType',
+                header: 'Job Type',
+                render: (project) => (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <PillDropdown
+                      options={buildTypeOptions}
+                      value={project.buildType || 'new_build'}
+                      onChange={(value) => updateProject(project.id, { buildType: value as BuildType })}
+                    />
+                  </div>
+                ),
+              },
+              {
+                key: 'customerStatus',
+                header: 'Customer Status',
+                render: (project) => {
+                  const customer = getCustomerById(project.customerId);
+                  return (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <PillDropdown
+                        options={customerStatusOptions}
+                        value={customer?.status || 'lead'}
+                        onChange={(value) => {
+                          if (customer) {
+                            updateCustomer(customer.id, { status: value as CustomerStatus });
+                          }
+                        }}
+                      />
+                    </div>
+                  );
+                },
+              },
+              {
+                key: 'portal',
+                header: 'Portal',
+                render: (project) => (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <PillDropdown
+                      options={portalStatusOptions}
+                      value={project.portalLive ? 'open' : 'closed'}
+                      onChange={(value) => updateProject(project.id, { portalLive: value === 'open' })}
+                    />
+                  </div>
+                ),
+              },
+              {
+                key: 'contact',
+                header: 'Contact',
+                render: (project) => {
+                  const customer = getCustomerById(project.customerId);
+                  return (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <ContactActions
+                        phone={customer?.phone || ''}
+                        email={customer?.email || ''}
+                        customerName={customer?.name}
+                      />
+                    </div>
+                  );
+                },
+              },
+            ]}
+            data={statFilteredProjects}
+            onRowClick={(project) => setSelectedCustomerId(project.customerId)}
+            emptyMessage="No proposals currently being built"
+          />
         );
 
       case 'pending_proposals':
@@ -638,52 +697,50 @@ export const SalesDashboard: React.FC = () => {
               },
               { key: 'address', header: 'Address' },
               {
-                key: 'status',
-                header: 'Status',
+                key: 'buildType',
+                header: 'Job Type',
                 render: (project) => (
                   <div onClick={(e) => e.stopPropagation()}>
-                    <StatusDropdown
-                      value={project.status}
-                      options={projectStatusDropdownOptions}
-                      onChange={(value) => updateProject(project.id, { status: value as ProjectStatus })}
+                    <PillDropdown
+                      options={buildTypeOptions}
+                      value={project.buildType || 'new_build'}
+                      onChange={(value) => updateProject(project.id, { buildType: value as BuildType })}
                     />
                   </div>
                 ),
               },
               {
-                key: 'daysInStatus',
-                header: 'Days in Status',
+                key: 'customerStatus',
+                header: 'Customer Status',
                 render: (project) => {
-                  const days = Math.floor((Date.now() - new Date(project.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+                  const customer = getCustomerById(project.customerId);
                   return (
-                    <div className="text-center">
-                      <span className={days > 7 ? 'text-red-600 font-medium' : 'text-gray-600'}>
-                        {days}
-                      </span>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <PillDropdown
+                        options={customerStatusOptions}
+                        value={customer?.status || 'lead'}
+                        onChange={(value) => {
+                          if (customer) {
+                            updateCustomer(customer.id, { status: value as CustomerStatus });
+                          }
+                        }}
+                      />
                     </div>
                   );
                 },
               },
               {
-                key: 'lastContacted',
-                header: 'Last Contacted',
-                render: (project) => {
-                  const activities = getActivitiesByProjectId(project.id);
-                  const lastContact = activities
-                    .filter(a => ['message_outbound', 'message_inbound'].includes(a.type))
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-
-                  if (!lastContact) {
-                    return <span className="text-gray-400">No contact</span>;
-                  }
-
-                  const days = Math.floor((Date.now() - new Date(lastContact.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-                  return (
-                    <span className={days > 3 ? 'text-red-600 font-medium' : 'text-gray-600'}>
-                      {days === 0 ? 'Today' : days === 1 ? 'Yesterday' : `${days} days ago`}
-                    </span>
-                  );
-                },
+                key: 'portal',
+                header: 'Portal',
+                render: (project) => (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <PillDropdown
+                      options={portalStatusOptions}
+                      value={project.portalLive ? 'open' : 'closed'}
+                      onChange={(value) => updateProject(project.id, { portalLive: value === 'open' })}
+                    />
+                  </div>
+                ),
               },
               {
                 key: 'contact',
@@ -702,21 +759,13 @@ export const SalesDashboard: React.FC = () => {
                 },
               },
             ]}
-            data={pendingProposals}
+            data={statFilteredProjects}
             onRowClick={(project) => setSelectedCustomerId(project.customerId)}
             emptyMessage="No pending proposals"
           />
         );
 
       case 'expired_quotes':
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const expiredQuotes = leadProjects.filter(p => {
-          if (p.status !== 'quote_expired') return false;
-          // Only show quotes expired within last 30 days
-          const statusDate = p.statusChangedAt ? new Date(p.statusChangedAt) : new Date(p.createdAt);
-          return statusDate >= thirtyDaysAgo;
-        });
         return (
           <Table<Project>
             columns={[
@@ -747,17 +796,37 @@ export const SalesDashboard: React.FC = () => {
               },
               { key: 'address', header: 'Address' },
               {
-                key: 'status',
-                header: 'Status',
+                key: 'buildType',
+                header: 'Job Type',
                 render: (project) => (
                   <div onClick={(e) => e.stopPropagation()}>
-                    <StatusDropdown
-                      value={project.status}
-                      options={projectStatusDropdownOptions}
-                      onChange={(value) => updateProject(project.id, { status: value as ProjectStatus })}
+                    <PillDropdown
+                      options={buildTypeOptions}
+                      value={project.buildType || 'new_build'}
+                      onChange={(value) => updateProject(project.id, { buildType: value as BuildType })}
                     />
                   </div>
                 ),
+              },
+              {
+                key: 'customerStatus',
+                header: 'Customer Status',
+                render: (project) => {
+                  const customer = getCustomerById(project.customerId);
+                  return (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <PillDropdown
+                        options={customerStatusOptions}
+                        value={customer?.status || 'lead'}
+                        onChange={(value) => {
+                          if (customer) {
+                            updateCustomer(customer.id, { status: value as CustomerStatus });
+                          }
+                        }}
+                      />
+                    </div>
+                  );
+                },
               },
               {
                 key: 'daysSinceExpired',
@@ -774,25 +843,17 @@ export const SalesDashboard: React.FC = () => {
                 },
               },
               {
-                key: 'lastContacted',
-                header: 'Last Contacted',
-                render: (project) => {
-                  const activities = getActivitiesByProjectId(project.id);
-                  const lastContact = activities
-                    .filter(a => ['message_outbound', 'message_inbound'].includes(a.type))
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-
-                  if (!lastContact) {
-                    return <span className="text-gray-400">No contact</span>;
-                  }
-
-                  const days = Math.floor((Date.now() - new Date(lastContact.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-                  return (
-                    <span className={days > 3 ? 'text-red-600 font-medium' : 'text-gray-600'}>
-                      {days === 0 ? 'Today' : days === 1 ? 'Yesterday' : `${days} days ago`}
-                    </span>
-                  );
-                },
+                key: 'portal',
+                header: 'Portal',
+                render: (project) => (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <PillDropdown
+                      options={portalStatusOptions}
+                      value={project.portalLive ? 'open' : 'closed'}
+                      onChange={(value) => updateProject(project.id, { portalLive: value === 'open' })}
+                    />
+                  </div>
+                ),
               },
               {
                 key: 'contact',
@@ -811,7 +872,7 @@ export const SalesDashboard: React.FC = () => {
                 },
               },
             ]}
-            data={expiredQuotes}
+            data={statFilteredProjects}
             onRowClick={(project) => setSelectedCustomerId(project.customerId)}
             emptyMessage="No expired quotes"
           />
@@ -824,66 +885,109 @@ export const SalesDashboard: React.FC = () => {
 
   return (
     <div>
-      {/* Stats Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard
-          title="Leads to Schedule"
-          value={preSaleProjects.length}
-          iconBgColor="bg-purple-100"
-          icon={
-            <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          }
-        />
-        <StatCard
-          title="Quote Appointments"
-          value={quoteScheduledCount}
-          iconBgColor="bg-blue-100"
-          icon={
-            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          }
-        />
-        <StatCard
-          title="Proposals Outstanding"
-          value={pendingProposals.length}
-          iconBgColor="bg-yellow-100"
-          icon={
-            <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          }
-        />
-        <StatCard
-          title="Pipeline Value"
-          value={`$${pipelineValue.toLocaleString()}`}
-          iconBgColor="bg-green-100"
-          icon={
-            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
-        />
-      </div>
-
-      {/* Tab Bar */}
+      {/* Header Row */}
       <div className="flex items-center justify-between mb-6">
-        <TabBar
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
+        <h2 className="text-xl font-semibold text-gray-900">Sales Dashboard</h2>
         <Button onClick={() => setShowNewCustomerModal(true)}>
           + New Customer
         </Button>
       </div>
 
-      {/* Tab Content */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        {renderTabContent()}
+      {/* Stats Cards - 3x2 Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+        <StatCard
+          title="My Leads"
+          value={myLeadsCount}
+          iconBgColor="bg-purple-100"
+          icon={
+            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          }
+          onClick={() => handleStatClick('my_leads')}
+          isActive={selectedStat === 'my_leads'}
+        />
+        <StatCard
+          title="Quote Appointments"
+          value={quoteAppointmentsCount}
+          iconBgColor="bg-blue-100"
+          icon={
+            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          }
+          onClick={() => handleStatClick('quote_appointments')}
+          isActive={selectedStat === 'quote_appointments'}
+        />
+        <StatCard
+          title="Lead Verification"
+          value={leadVerificationCount}
+          iconBgColor="bg-orange-100"
+          icon={
+            <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+          onClick={() => handleStatClick('lead_verification')}
+          isActive={selectedStat === 'lead_verification'}
+        />
+        <StatCard
+          title="Building Proposal"
+          value={buildingProposalCount}
+          iconBgColor="bg-indigo-100"
+          icon={
+            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          }
+          onClick={() => handleStatClick('building_proposal')}
+          isActive={selectedStat === 'building_proposal'}
+        />
+        <StatCard
+          title="Pending Proposals"
+          value={pendingProposalsCount}
+          iconBgColor="bg-yellow-100"
+          icon={
+            <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+          onClick={() => handleStatClick('pending_proposals')}
+          isActive={selectedStat === 'pending_proposals'}
+        />
+        <StatCard
+          title="Expired Quotes"
+          value={expiredQuotesCount}
+          iconBgColor="bg-red-100"
+          icon={
+            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+          onClick={() => handleStatClick('expired_quotes')}
+          isActive={selectedStat === 'expired_quotes'}
+        />
       </div>
+
+      {/* Stat-Filtered Section */}
+      {selectedStat && (
+        <div className="bg-white border border-gray-200 rounded-lg">
+          <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900">
+              {getSectionTitle()} ({getStatFilteredProjects().length})
+            </h3>
+            <button
+              onClick={() => setSelectedStat(null)}
+              className="text-sm text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          {renderStatContent()}
+        </div>
+      )}
 
       {/* Customer/Project Modal */}
       <CustomerProjectModal

@@ -119,18 +119,29 @@ export const leadSourceOptions: PillDropdownOption[] = [
   { value: 'out_of_house', label: 'Out of House', color: 'gray' },
 ];
 
-// Customer Status options (pre-sale lead journey)
+// Customer Status options (full customer journey)
 export const customerStatusOptions: PillDropdownOption[] = [
+  // Pre-sale
   { value: 'new_lead', label: 'New Lead', color: 'gray' },
   { value: 'contact_attempted', label: 'Contact Attempted', color: 'yellow' },
   { value: 'contacted', label: 'Contacted', color: 'blue' },
-  { value: 'repair_scheduled', label: 'Repair Scheduled', color: 'purple' },
+  { value: 'needs_qualifying', label: 'Needs Qualifying', color: 'orange' },
   { value: 'quote_scheduled', label: 'Quote Scheduled', color: 'purple' },
   { value: 'building_proposal', label: 'Building Proposal', color: 'yellow' },
-  { value: 'proposal_sent', label: 'Proposal Sent', color: 'orange' },
-  { value: 'awaiting_deposit', label: 'Awaiting Deposit', color: 'orange' },
-  { value: 'won', label: 'Won', color: 'green' },
+  { value: 'proposal_sent', label: 'Proposal Sent', color: 'cyan' },
+  { value: 'awaiting_deposit', label: 'Awaiting Deposit', color: 'cyan' },
+  // Post-sale (active customer)
+  { value: 'active_project', label: 'Active Project', color: 'green' },
+  { value: 'complete', label: 'Complete', color: 'green' },
+  // Terminal states
+  { value: 'quote_expired', label: 'Quote Expired', color: 'red' },
   { value: 'lost', label: 'Lost', color: 'red' },
+];
+
+// Portal Status options
+export const portalStatusOptions: PillDropdownOption[] = [
+  { value: 'open', label: 'Open', color: 'green' },
+  { value: 'closed', label: 'Closed', color: 'red' },
 ];
 
 // Project Status options (post-sale only)
@@ -146,7 +157,7 @@ export const projectStatusOptions: PillDropdownOption[] = [
   { value: 'scheduling_installation', label: 'Scheduling Installation', color: 'purple' },
   { value: 'installation_scheduled', label: 'Installation Scheduled', color: 'purple' },
   { value: 'installation_delayed', label: 'Installation Delayed', color: 'red' },
-  { value: 'installation_in_progress', label: 'Installation In Progress', color: 'blue' },
+  { value: 'installation_in_progress', label: 'Installation in Progress', color: 'blue' },
   { value: 'scheduling_walkthrough', label: 'Scheduling Walkthrough', color: 'blue' },
   { value: 'walkthrough_scheduled', label: 'Walkthrough Scheduled', color: 'blue' },
   { value: 'fixes_needed', label: 'Fixes Needed', color: 'orange' },

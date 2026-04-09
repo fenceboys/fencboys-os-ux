@@ -1,24 +1,19 @@
 import React, { useState } from 'react';
-import { ProjectStatusConfig, ProjectPhase, StatusTrigger } from '../../types';
+import { CustomerStatusConfig, StatusTrigger } from '../../types';
 import { Button } from '../ui';
 
-interface StatusEditModalProps {
-  status: ProjectStatusConfig | null;
-  onSave: (updates: Partial<ProjectStatusConfig>) => void;
+interface CustomerStatusEditModalProps {
+  status: CustomerStatusConfig | null;
+  onSave: (updates: Partial<CustomerStatusConfig>) => void;
   onClose: () => void;
 }
 
-const phaseOptions: { value: ProjectPhase; label: string }[] = [
-  { value: 'permits', label: 'Permits' },
-  { value: 'materials', label: 'Materials' },
-  { value: 'scheduling', label: 'Scheduling' },
-  { value: 'installation', label: 'Installation' },
-  { value: 'close_out', label: 'Close Out' },
-];
-
 const triggerOptions: { value: StatusTrigger; label: string; description: string }[] = [
   { value: 'manual', label: 'Manual', description: 'Staff manually changes status' },
-  { value: 'final_payment_paid', label: 'Final Payment', description: 'Auto-triggered when final balance is paid' },
+  { value: 'calendly_scheduled', label: 'Calendly Scheduled', description: 'Customer books via Calendly in portal' },
+  { value: 'portal_signed', label: 'Portal Signed', description: 'Customer signs document in portal' },
+  { value: 'deposit_paid', label: 'Deposit Paid', description: 'Deposit payment received' },
+  { value: 'final_payment_paid', label: 'Final Payment', description: 'Final balance payment received' },
 ];
 
 const defaultColors = {
@@ -26,7 +21,7 @@ const defaultColors = {
   textColor: '#1d4ed8',
 };
 
-export const StatusEditModal: React.FC<StatusEditModalProps> = ({
+export const CustomerStatusEditModal: React.FC<CustomerStatusEditModalProps> = ({
   status,
   onSave,
   onClose,
@@ -35,7 +30,6 @@ export const StatusEditModal: React.FC<StatusEditModalProps> = ({
   const [formData, setFormData] = useState({
     name: status?.name || '',
     customerLabel: status?.customerLabel || '',
-    phase: status?.phase || 'permits' as ProjectPhase,
     trigger: (status?.trigger || 'manual') as StatusTrigger,
     triggerNote: status?.triggerNote || '',
     sortOrder: status?.sortOrder || 1,
@@ -106,43 +100,25 @@ export const StatusEditModal: React.FC<StatusEditModalProps> = ({
             </div>
           </div>
 
-          {/* Row 2: Phase and Trigger */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phase
-              </label>
-              <select
-                value={formData.phase}
-                onChange={(e) => handleChange('phase', e.target.value as ProjectPhase)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-              >
-                {phaseOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Trigger
-              </label>
-              <select
-                value={formData.trigger}
-                onChange={(e) => handleChange('trigger', e.target.value as StatusTrigger)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-              >
-                {triggerOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-gray-500">
-                {triggerOptions.find(t => t.value === formData.trigger)?.description}
-              </p>
-            </div>
+          {/* Row 2: Trigger */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Trigger
+            </label>
+            <select
+              value={formData.trigger}
+              onChange={(e) => handleChange('trigger', e.target.value as StatusTrigger)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+            >
+              {triggerOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              {triggerOptions.find(t => t.value === formData.trigger)?.description}
+            </p>
           </div>
 
           {/* Row 3: Description */}

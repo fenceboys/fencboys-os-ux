@@ -6,22 +6,23 @@ import { ProjectsTable } from './ProjectsTable';
 import { CustomerProjectModal } from './CustomerProjectModal';
 import { CustomerForm } from '../customers/CustomerForm';
 import { useData } from '../../context/DataContext';
-import { getStatusInfo } from '../../constants/statuses';
+import { getStatusInfo, isPreSale, isActive } from '../../constants/statuses';
 import { Project, BuildType } from '../../types';
-import { PillDropdown, buildTypeOptions } from '../ui/PillDropdown';
+import { PillDropdown, buildTypeOptions, portalStatusOptions } from '../ui/PillDropdown';
 import { ContactActions } from '../ui/ContactActions';
 
 type ViewMode = 'kanban' | 'table';
-type FilterMode = 'all' | 'pre_sale' | 'post_sale';
+type FilterMode = 'pre_sale' | 'post_sale';
 type StatFilter = 'quote_requests' | 'quote_appts' | 'scheduling' | 'permits' | 'materials' | 'installations' | null;
 
 export const AdminDashboard: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [filterMode, setFilterMode] = useState<FilterMode>('all');
+  const [filterMode, setFilterMode] = useState<FilterMode>('pre_sale');
   const [selectedSalesperson, setSelectedSalesperson] = useState<string>('all');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [selectedStat, setSelectedStat] = useState<StatFilter>('quote_requests');
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
+  const [sendPortalProject, setSendPortalProject] = useState<Project | null>(null);
   const { projects, salespeople, getCustomerById, updateProject } = useData();
 
   const handleAssignSalesperson = (projectId: string, salespersonId: string) => {
@@ -29,11 +30,17 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleOpenPortalForScheduling = (project: Project) => {
-    const customer = getCustomerById(project.customerId);
-    const portalLink = `https://portal.fenceboys.com/schedule`;
+    // Show confirmation modal
+    setSendPortalProject(project);
+  };
+
+  const confirmSendPortalLink = () => {
+    if (!sendPortalProject) return;
+    const customer = getCustomerById(sendPortalProject.customerId);
+    const portalLink = `${window.location.origin}/portal/${sendPortalProject.id}`;
     const message = encodeURIComponent(`Hi ${customer?.name}! Use this link to schedule your free on-site quote appointment: ${portalLink}\n\nJust pick a date and time that works for you!`);
     window.open(`sms:${customer?.phone}?body=${message}`, '_self');
-    updateProject(project.id, { status: 'quote_scheduled' });
+    setSendPortalProject(null);
   };
 
   const handleScheduleManually = (project: Project) => {
@@ -55,17 +62,26 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Filter functions for each stat
-  const getQuoteRequests = () => projects.filter(p => p.status === 'new_lead');
+  // Note: Pre-sale statuses use customer.status, post-sale uses project.status
+  const getQuoteRequests = () => projects.filter(p => {
+    const customer = getCustomerById(p.customerId);
+    return customer?.status === 'new_lead' || customer?.status === 'contact_attempted' || customer?.status === 'contacted';
+  });
   const getQuoteApptsToday = () => projects.filter(p => {
+    const customer = getCustomerById(p.customerId);
+    if (customer?.status !== 'quote_scheduled') return false;
     if (!p.salesAppointment) return false;
     const today = new Date().toDateString();
     return new Date(p.salesAppointment).toDateString() === today;
   });
-  const getSchedulingProjects = () => projects.filter(p =>
-    p.status === 'scheduling_installation' ||
-    p.status === 'quote_scheduled' ||
-    p.status === 'scheduling_walkthrough'
-  );
+  const getSchedulingProjects = () => projects.filter(p => {
+    const customer = getCustomerById(p.customerId);
+    // Pre-sale: quote_scheduled uses customer status
+    // Post-sale: scheduling_installation and scheduling_walkthrough use project status
+    return customer?.status === 'quote_scheduled' ||
+      p.status === 'scheduling_installation' ||
+      p.status === 'scheduling_walkthrough';
+  });
   const getPermitProjects = () => projects.filter(p =>
     p.status === 'permit_preparation' || p.status === 'permit_submitted' ||
     p.status === 'permit_revision_needed' || p.status === 'permit_resubmitted' ||
@@ -111,11 +127,12 @@ export const AdminDashboard: React.FC = () => {
       if (selectedSalesperson !== 'all' && p.salespersonId !== selectedSalesperson) {
         return false;
       }
-      if (filterMode !== 'all') {
-        const status = getStatusInfo(p.status);
-        if (filterMode === 'pre_sale' && status?.phase !== 'pre_sale') return false;
-        if (filterMode === 'post_sale' && status?.phase !== 'post_sale') return false;
-      }
+      const customer = getCustomerById(p.customerId);
+      if (!customer) return false;
+      // Pre-sale: customer hasn't converted to active_project yet
+      if (filterMode === 'pre_sale' && !isPreSale(customer.status)) return false;
+      // Post-sale: only show active_project customers
+      if (filterMode === 'post_sale' && customer.status !== 'active_project') return false;
       return true;
     });
   };
@@ -185,7 +202,7 @@ export const AdminDashboard: React.FC = () => {
         },
         {
           key: 'buildType',
-          header: 'Build Type',
+          header: 'Job Type',
           render: (project) => (
             <div onClick={(e) => e.stopPropagation()}>
               <PillDropdown
@@ -197,16 +214,17 @@ export const AdminDashboard: React.FC = () => {
           ),
         },
         {
-          key: 'added',
-          header: 'Added',
-          render: (project) => {
-            const daysOld = Math.floor((Date.now() - new Date(project.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-            return (
-              <span className={daysOld > 1 ? 'text-orange-600 font-medium' : 'text-gray-600'}>
-                {daysOld === 0 ? 'Today' : daysOld === 1 ? '1 day' : `${daysOld} days`}
-              </span>
-            );
-          },
+          key: 'portal',
+          header: 'Portal',
+          render: (project) => (
+            <div onClick={(e) => e.stopPropagation()}>
+              <PillDropdown
+                options={portalStatusOptions}
+                value={project.portalLive ? 'open' : 'closed'}
+                onChange={(value) => updateProject(project.id, { portalLive: value === 'open' })}
+              />
+            </div>
+          ),
         },
         {
           key: 'contact',
@@ -220,7 +238,6 @@ export const AdminDashboard: React.FC = () => {
                   phone={customer.phone}
                   email={customer.email}
                   customerName={customer.name}
-                  size="sm"
                 />
               </div>
             );
@@ -230,16 +247,16 @@ export const AdminDashboard: React.FC = () => {
           key: 'schedule',
           header: 'Schedule',
           render: (project) => (
-            <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={() => handleOpenPortalForScheduling(project)}
-                className="px-3 py-1 border border-blue-200 text-blue-600 rounded hover:bg-blue-50 transition-colors"
+                className="text-sm px-3 py-1.5 font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-full transition-colors"
               >
                 Portal
               </button>
               <button
                 onClick={() => handleScheduleManually(project)}
-                className="px-3 py-1 border border-green-200 text-green-600 rounded hover:bg-green-50 transition-colors"
+                className="text-sm px-3 py-1.5 font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
               >
                 Manual
               </button>
@@ -277,8 +294,8 @@ export const AdminDashboard: React.FC = () => {
         </Button>
       </div>
 
-      {/* Stats Bar - Interactive Filters */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      {/* Stats Bar - Interactive Filters (3x2 grid) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
         <StatCard
           title="New Leads"
           value={quoteRequests}
@@ -376,19 +393,19 @@ export const AdminDashboard: React.FC = () => {
       {/* Project Tracking Section - Always Visible */}
       <div className="bg-white border border-gray-200 rounded-lg">
         <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">Project Tracking</h3>
+          <div className="flex items-center space-x-4">
+            <h3 className="font-semibold text-gray-900">Project Tracking</h3>
+            {filterMode === 'pre_sale' && (
+              <Dropdown
+                options={salespersonOptions}
+                value={selectedSalesperson}
+                onChange={setSelectedSalesperson}
+                className="w-48"
+              />
+            )}
+          </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setFilterMode('all')}
-                className={`px-3 py-1.5 rounded text-sm ${
-                  filterMode === 'all'
-                    ? 'bg-gray-900 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                All
-              </button>
               <button
                 onClick={() => setFilterMode('pre_sale')}
                 className={`px-3 py-1.5 rounded text-sm ${
@@ -410,13 +427,6 @@ export const AdminDashboard: React.FC = () => {
                 Post-Sale
               </button>
             </div>
-
-            <Dropdown
-              options={salespersonOptions}
-              value={selectedSalesperson}
-              onChange={setSelectedSalesperson}
-              className="w-48"
-            />
 
             <div className="flex items-center space-x-2 border-l border-gray-200 pl-4">
               <button
@@ -454,6 +464,7 @@ export const AdminDashboard: React.FC = () => {
             <ProjectsTable
               projects={trackingFilteredProjects}
               onCustomerClick={(customerId) => setSelectedCustomerId(customerId)}
+              showSalesperson={filterMode === 'pre_sale'}
             />
           )}
         </div>
@@ -472,6 +483,37 @@ export const AdminDashboard: React.FC = () => {
         title="New Customer"
       >
         <CustomerForm onClose={() => setShowNewCustomerModal(false)} />
+      </Modal>
+
+      {/* Send Portal Link Confirmation Modal */}
+      <Modal
+        isOpen={!!sendPortalProject}
+        onClose={() => setSendPortalProject(null)}
+        title="Send Portal Link"
+        size="sm"
+      >
+        {sendPortalProject && (() => {
+          const customer = getCustomerById(sendPortalProject.customerId);
+          return (
+            <div className="space-y-4">
+              <p className="text-gray-600">
+                Send scheduling portal link to <span className="font-medium text-gray-900">{customer?.name}</span> via SMS?
+              </p>
+              <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
+                <p className="font-medium text-gray-700 mb-1">Message preview:</p>
+                <p>Hi {customer?.name}! Use this link to schedule your free on-site quote appointment...</p>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setSendPortalProject(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={confirmSendPortalLink}>
+                  Send SMS
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
       </Modal>
     </div>
   );

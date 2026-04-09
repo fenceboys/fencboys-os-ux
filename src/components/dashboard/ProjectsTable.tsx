@@ -1,18 +1,20 @@
 import React from 'react';
 import { Project, ProjectStatus, BuildType, CustomerStatus } from '../../types';
 import { Table, StatusDropdown, Dropdown } from '../ui';
-import { PillDropdown, buildTypeOptions, customerStatusOptions, projectStatusOptions } from '../ui/PillDropdown';
+import { PillDropdown, buildTypeOptions, customerStatusOptions, projectStatusOptions, portalStatusOptions } from '../ui/PillDropdown';
 import { ContactActions } from '../ui/ContactActions';
 import { useData } from '../../context/DataContext';
 
 interface ProjectsTableProps {
   projects: Project[];
   onCustomerClick: (customerId: string) => void;
+  showSalesperson?: boolean;
 }
 
 export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   projects,
   onCustomerClick,
+  showSalesperson = true,
 }) => {
   const { getCustomerById, getSalespersonById, updateProject, updateCustomer, salespeople, getActivitiesByProjectId } = useData();
 
@@ -60,128 +62,116 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     };
   };
 
+  const allColumns = [
+    {
+      key: 'name',
+      header: 'Customer',
+      render: (project: Project) => {
+        const customer = getCustomerById(project.customerId);
+        return (
+          <div className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+            {customer?.name}
+          </div>
+        );
+      },
+    },
+    ...(showSalesperson ? [{
+      key: 'salesperson',
+      header: 'Salesperson',
+      render: (project: Project) => (
+        <div onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ minWidth: '140px' }}>
+          <Dropdown
+            options={salespersonOptions}
+            value={project.salespersonId || ''}
+            onChange={(value) => updateProject(project.id, { salespersonId: value })}
+            placeholder="Assign..."
+          />
+        </div>
+      ),
+    }] : []),
+    { key: 'address', header: 'Address' },
+    {
+      key: 'buildType',
+      header: 'Job Type',
+      render: (project: Project) => (
+        <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+          <PillDropdown
+            options={buildTypeOptions}
+            value={project.buildType || 'new_build'}
+            onChange={(value) => updateProject(project.id, { buildType: value as BuildType })}
+          />
+        </div>
+      ),
+    },
+    {
+      key: 'customerStatus',
+      header: 'Customer Status',
+      render: (project: Project) => {
+        const customer = getCustomerById(project.customerId);
+        return (
+          <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <PillDropdown
+              options={customerStatusOptions}
+              value={customer?.status || 'lead'}
+              onChange={(value) => {
+                if (customer) {
+                  updateCustomer(customer.id, { status: value as CustomerStatus });
+                }
+              }}
+            />
+          </div>
+        );
+      },
+    },
+    {
+      key: 'status',
+      header: 'Project Status',
+      render: (project: Project) => (
+        <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+          <StatusDropdown
+            value={project.status}
+            options={statusOptions}
+            onChange={(value) => updateProject(project.id, { status: value as ProjectStatus })}
+          />
+        </div>
+      ),
+    },
+    {
+      key: 'portal',
+      header: 'Portal',
+      render: (project: Project) => (
+        <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+          <PillDropdown
+            options={portalStatusOptions}
+            value={project.portalLive ? 'open' : 'closed'}
+            onChange={(value) => updateProject(project.id, { portalLive: value === 'open' })}
+          />
+        </div>
+      ),
+    },
+    {
+      key: 'contact',
+      header: 'Contact',
+      render: (project: Project) => {
+        const customer = getCustomerById(project.customerId);
+        if (!customer) return null;
+        return (
+          <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <ContactActions
+              phone={customer.phone}
+              email={customer.email}
+              customerName={customer.name}
+            />
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="bg-white rounded-lg border border-gray-200">
       <Table<Project>
-        columns={[
-          {
-            key: 'name',
-            header: 'Customer',
-            render: (project) => {
-              const customer = getCustomerById(project.customerId);
-              return (
-                <div className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-                  {customer?.name}
-                </div>
-              );
-            },
-          },
-          { key: 'address', header: 'Address' },
-          {
-            key: 'buildType',
-            header: 'Build Type',
-            render: (project) => (
-              <div onClick={(e) => e.stopPropagation()}>
-                <PillDropdown
-                  options={buildTypeOptions}
-                  value={project.buildType || 'new_build'}
-                  onChange={(value) => updateProject(project.id, { buildType: value as BuildType })}
-                />
-              </div>
-            ),
-          },
-          {
-            key: 'customerStatus',
-            header: 'Customer Status',
-            render: (project) => {
-              const customer = getCustomerById(project.customerId);
-              return (
-                <div onClick={(e) => e.stopPropagation()}>
-                  <PillDropdown
-                    options={customerStatusOptions}
-                    value={customer?.status || 'lead'}
-                    onChange={(value) => {
-                      if (customer) {
-                        updateCustomer(customer.id, { status: value as CustomerStatus });
-                      }
-                    }}
-                  />
-                </div>
-              );
-            },
-          },
-          {
-            key: 'status',
-            header: 'Project Status',
-            render: (project) => (
-              <div onClick={(e) => e.stopPropagation()}>
-                <StatusDropdown
-                  value={project.status}
-                  options={statusOptions}
-                  onChange={(value) => updateProject(project.id, { status: value as ProjectStatus })}
-                />
-              </div>
-            ),
-          },
-          {
-            key: 'salesperson',
-            header: 'Salesperson',
-            render: (project) => (
-              <div onClick={(e) => e.stopPropagation()} style={{ minWidth: '140px' }}>
-                <Dropdown
-                  options={salespersonOptions}
-                  value={project.salespersonId || ''}
-                  onChange={(value) => updateProject(project.id, { salespersonId: value })}
-                  placeholder="Assign..."
-                />
-              </div>
-            ),
-          },
-          {
-            key: 'daysInStatus',
-            header: 'Days in Status',
-            render: (project) => {
-              const days = getDaysInStatus(project);
-              return (
-                <div className="text-center">
-                  <span className={days > 7 ? 'text-orange-600 font-medium' : 'text-gray-600'}>
-                    {days}
-                  </span>
-                </div>
-              );
-            },
-          },
-          {
-            key: 'lastContacted',
-            header: 'Last Contacted',
-            render: (project) => {
-              const { text, days } = getLastContacted(project);
-              return (
-                <span className={days > 3 ? 'text-red-600 font-medium' : days === -1 ? 'text-gray-400' : 'text-gray-600'}>
-                  {text}
-                </span>
-              );
-            },
-          },
-          {
-            key: 'contact',
-            header: 'Contact',
-            render: (project) => {
-              const customer = getCustomerById(project.customerId);
-              if (!customer) return null;
-              return (
-                <div onClick={(e) => e.stopPropagation()}>
-                  <ContactActions
-                    phone={customer.phone}
-                    email={customer.email}
-                    customerName={customer.name}
-                    size="sm"
-                  />
-                </div>
-              );
-            },
-          },
-        ]}
+        columns={allColumns}
         data={projects}
         onRowClick={(project) => onCustomerClick(project.customerId)}
         emptyMessage="No projects found"
