@@ -7,9 +7,9 @@ interface PageLayoutProps {
 
 export const PageLayout: React.FC<PageLayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col bg-background">
       <NavBar />
-      <main className="px-6 py-6">
+      <main className="flex-1 overflow-y-auto px-6 py-6">
         {children}
       </main>
     </div>

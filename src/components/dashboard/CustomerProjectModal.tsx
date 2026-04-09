@@ -42,7 +42,22 @@ export const CustomerProjectModal: React.FC<CustomerProjectModalProps> = ({
   };
 
   return (
-    <Modal isOpen={!!customerId} onClose={onClose} title={customer.name} size="md">
+    <Modal
+      isOpen={!!customerId}
+      onClose={onClose}
+      title={
+        <div className="flex items-center gap-3">
+          <span>{customer.name}</span>
+          <button
+            onClick={handleViewCustomer}
+            className="text-sm font-normal text-blue-600 hover:text-blue-700 hover:underline"
+          >
+            View Profile →
+          </button>
+        </div>
+      }
+      size="md"
+    >
       <div className="space-y-4">
         {/* Customer Summary */}
         <div className="bg-gray-50 rounded-lg p-4">
@@ -132,16 +147,13 @@ export const CustomerProjectModal: React.FC<CustomerProjectModalProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex space-x-3 pt-2 border-t border-gray-200">
-          <Button variant="outline" className="flex-1" onClick={handleViewCustomer}>
-            See Customer Profile
-          </Button>
-          {projects.length === 0 && (
-            <Button className="flex-1" onClick={handleViewCustomer}>
+        {projects.length === 0 && (
+          <div className="pt-2 border-t border-gray-200">
+            <Button className="w-full" onClick={handleViewCustomer}>
               + New Project
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </Modal>
   );

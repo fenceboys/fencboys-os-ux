@@ -1,18 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, Button, Toggle, Dropdown, Modal } from '../ui';
 import { PageLayout } from '../layout';
 import { ToolCards } from './ToolCards';
-import { ActivityFeed } from './ActivityFeed';
 import { useData } from '../../context/DataContext';
-import { ProjectStatus } from '../../types';
+import { ProjectStatus, Activity } from '../../types';
 
 // Status Pill Dropdown Component
 const StatusPillDropdown: React.FC<{
   status: ProjectStatus;
   options: { value: string; label: string; bgColor?: string; textColor?: string }[];
   onChange: (value: string) => void;
-}> = ({ status, options, onChange }) => {
+  disabled?: boolean;
+  disabledReason?: string;
+}> = ({ status, options, onChange, disabled = false, disabledReason }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
@@ -33,17 +34,23 @@ const StatusPillDropdown: React.FC<{
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-full border transition-colors hover:opacity-80"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        title={disabled ? disabledReason : undefined}
+        className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-full border transition-colors ${
+          disabled ? 'cursor-not-allowed opacity-60' : 'hover:opacity-80'
+        }`}
         style={{ backgroundColor: bgColor, color: textColor, borderColor: bgColor }}
       >
         {selectedOption?.label || status}
-        <svg className="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        {!disabled && (
+          <svg className="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        )}
       </button>
 
-      {isOpen && (
+      {isOpen && !disabled && (
         <div className="absolute z-20 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-auto">
           {options.map((option) => (
             <button
@@ -75,8 +82,9 @@ const MAIN_LINE = '(555) 123-4567';
 export const ProjectPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [phoneModalOpen, setPhoneModalOpen] = React.useState(false);
-  const [mapsModalOpen, setMapsModalOpen] = React.useState(false);
+  const [phoneModalOpen, setPhoneModalOpen] = useState(false);
+  const [mapsModalOpen, setMapsModalOpen] = useState(false);
+  const [activityTab, setActivityTab] = useState<'status_changes' | 'calls' | 'voicemails' | 'texts' | 'emails'>('status_changes');
   const {
     getProjectById,
     getCustomerById,
@@ -84,11 +92,145 @@ export const ProjectPage: React.FC = () => {
     salespeople,
     getSalespersonById,
     projectStatusConfigs,
+    getActivitiesByProjectId,
   } = useData();
 
   const project = getProjectById(id || '');
   const customer = project ? getCustomerById(project.customerId) : null;
   const salesperson = project ? getSalespersonById(project.salespersonId) : null;
+  const activities = project ? getActivitiesByProjectId(project.id) : [];
+
+  // Activity type labels
+  const activityTypeLabels: Record<string, string> = {
+    status_change: 'Status Change',
+    note_added: 'Note Added',
+    call_recording: 'Call',
+    voicemail: 'Voicemail',
+    text_inbound: 'Text Received',
+    text_outbound: 'Text Sent',
+    message_inbound: 'Text Received',
+    message_outbound: 'Text Sent',
+    email_inbound: 'Email Received',
+    email_outbound: 'Email Sent',
+    proposal_sent: 'Proposal Sent',
+    proposal_signed: 'Proposal Signed',
+    payment_received: 'Payment Received',
+  };
+
+  // Get activity color classes
+  const getActivityColor = (type: string) => {
+    switch (type) {
+      case 'call_recording':
+        return { bg: 'bg-green-100', text: 'text-green-600' };
+      case 'voicemail':
+        return { bg: 'bg-orange-100', text: 'text-orange-600' };
+      case 'text_inbound':
+      case 'message_inbound':
+        return { bg: 'bg-blue-100', text: 'text-blue-600' };
+      case 'text_outbound':
+      case 'message_outbound':
+        return { bg: 'bg-cyan-100', text: 'text-cyan-600' };
+      case 'email_inbound':
+        return { bg: 'bg-indigo-100', text: 'text-indigo-600' };
+      case 'email_outbound':
+        return { bg: 'bg-violet-100', text: 'text-violet-600' };
+      case 'status_change':
+        return { bg: 'bg-purple-100', text: 'text-purple-600' };
+      default:
+        return { bg: 'bg-gray-100', text: 'text-gray-600' };
+    }
+  };
+
+  // Get activity icon
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'call_recording':
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+          </svg>
+        );
+      case 'voicemail':
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+          </svg>
+        );
+      case 'text_inbound':
+      case 'text_outbound':
+      case 'message_inbound':
+      case 'message_outbound':
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        );
+      case 'email_inbound':
+      case 'email_outbound':
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        );
+      case 'status_change':
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+    }
+  };
+
+  // Filter activities by tab
+  const getFilteredActivities = () => {
+    const sorted = [...activities].sort((a: Activity, b: Activity) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    switch (activityTab) {
+      case 'status_changes':
+        return sorted.filter(a => ['status_change', 'note_added', 'proposal_sent', 'proposal_signed', 'payment_received'].includes(a.type));
+      case 'calls':
+        return sorted.filter(a => a.type === 'call_recording');
+      case 'voicemails':
+        return sorted.filter(a => a.type === 'voicemail');
+      case 'texts':
+        return sorted.filter(a => ['text_inbound', 'text_outbound', 'message_inbound', 'message_outbound'].includes(a.type));
+      case 'emails':
+        return sorted.filter(a => ['email_inbound', 'email_outbound'].includes(a.type));
+      default:
+        return sorted;
+    }
+  };
+
+  const filteredActivities = getFilteredActivities();
+
+  // Tab counts
+  const statusChangeCount = activities.filter(a => ['status_change', 'note_added', 'proposal_sent', 'proposal_signed', 'payment_received'].includes(a.type)).length;
+  const callCount = activities.filter(a => a.type === 'call_recording').length;
+  const voicemailCount = activities.filter(a => a.type === 'voicemail').length;
+  const textCount = activities.filter(a => ['text_inbound', 'text_outbound', 'message_inbound', 'message_outbound'].includes(a.type)).length;
+  const emailCount = activities.filter(a => ['email_inbound', 'email_outbound'].includes(a.type)).length;
+
+  const activityTabs = [
+    { id: 'status_changes' as const, label: 'Status Changes', count: statusChangeCount },
+    { id: 'calls' as const, label: 'Calls', count: callCount },
+    { id: 'voicemails' as const, label: 'Voicemails', count: voicemailCount },
+    { id: 'texts' as const, label: 'Texts', count: textCount },
+    { id: 'emails' as const, label: 'Emails', count: emailCount },
+  ];
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   if (!project || !customer) {
     return (
@@ -103,11 +245,14 @@ export const ProjectPage: React.FC = () => {
     );
   }
 
+  // Convert name to snake_case to match project status values
+  const toSnakeCase = (str: string) => str.toLowerCase().replace(/\s+/g, '_');
+
   const statusOptions = projectStatusConfigs
     .filter(s => s.isActive)
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map(s => ({
-      value: s.id,
+      value: toSnakeCase(s.name),
       label: s.name,
       bgColor: s.bgColor,
       textColor: s.textColor,
@@ -197,6 +342,8 @@ export const ProjectPage: React.FC = () => {
               status={project.status}
               options={statusOptions}
               onChange={handleStatusChange}
+              disabled={customer?.status !== 'active_project'}
+              disabledReason="Customer status must be 'Active Project' to change project status"
             />
             <div className="flex items-center space-x-1 text-sm text-gray-500">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,14 +362,29 @@ export const ProjectPage: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" onClick={() => setPhoneModalOpen(true)}>
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+            Call
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setPhoneModalOpen(true)}>
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            SMS
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleEmailClick}>
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            Email
+          </Button>
           <Button variant="outline" size="sm">
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
             Edit
-          </Button>
-          <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300">
-            Delete
           </Button>
         </div>
       </div>
@@ -240,32 +402,17 @@ export const ProjectPage: React.FC = () => {
             </div>
             <div>
               <label className="text-sm text-gray-500">Phone</label>
-              <button
-                onClick={() => setPhoneModalOpen(true)}
-                className="block text-blue-600 hover:text-blue-800 hover:underline font-medium"
-              >
-                {customer.phone}
-              </button>
+              <p className="text-gray-900">{customer.phone}</p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Email</label>
-              <button
-                onClick={handleEmailClick}
-                className="block text-blue-600 hover:text-blue-800 hover:underline"
-              >
-                {customer.email}
-              </button>
+              <p className="text-gray-900">{customer.email}</p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Address</label>
-              <button
-                onClick={() => setMapsModalOpen(true)}
-                className="block text-blue-600 hover:text-blue-800 hover:underline text-left"
-              >
-                {project.address}
-              </button>
+              <p className="text-gray-900">{project.address}</p>
             </div>
-                      </div>
+          </div>
         </Card>
 
         {/* Project Controls - Compact */}
@@ -321,12 +468,79 @@ export const ProjectPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <ActivityFeed projectId={project.id} />
+        {/* Communications */}
+        <Card padding="none">
+          <div className="p-4 border-b border-gray-200">
+            <CardTitle>Communications</CardTitle>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200 px-2 overflow-x-auto">
+            {activityTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActivityTab(tab.id)}
+                className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activityTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab.label}
+                {tab.count > 0 && (
+                  <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                    activityTab === tab.id
+                      ? 'bg-blue-100 text-blue-600'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Activity List */}
+          <div className="p-3 space-y-2 max-h-64 overflow-y-auto">
+            {filteredActivities.length > 0 ? (
+              filteredActivities.slice(0, 15).map((activity) => {
+                const colors = getActivityColor(activity.type);
+                return (
+                  <div key={activity.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className={`w-8 h-8 ${colors.bg} rounded-full flex items-center justify-center flex-shrink-0 ${colors.text}`}>
+                      {getActivityIcon(activity.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-gray-700">
+                          {activityTypeLabels[activity.type] || activity.type}
+                        </span>
+                        <span className="text-xs text-gray-400 flex-shrink-0">
+                          {new Date(activity.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 truncate">{activity.content}</p>
+                      {activity.duration && (
+                        <p className="text-xs text-gray-400">
+                          {formatDuration(activity.duration)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-sm text-gray-400">
+                  {activityTab === 'status_changes' && 'No status changes'}
+                  {activityTab === 'calls' && 'No call recordings'}
+                  {activityTab === 'voicemails' && 'No voicemails'}
+                  {activityTab === 'texts' && 'No text messages'}
+                  {activityTab === 'emails' && 'No emails'}
+                </p>
+              </div>
+            )}
+          </div>
         </Card>
       </div>
 

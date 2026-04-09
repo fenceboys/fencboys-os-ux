@@ -11,3 +11,4 @@ export { RequestTypesPage } from './RequestTypesPage';
 export { AdminLanding } from './AdminLanding';
 export { PortalCopyPage } from './PortalCopyPage';
 export { DashboardViewsPage } from './DashboardViewsPage';
+export { IntegrationsPage } from './IntegrationsPage';

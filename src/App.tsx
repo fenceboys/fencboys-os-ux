@@ -9,7 +9,6 @@ import {
   Tools,
   ToolsDrawings,
   ToolsPricing,
-  Placeholder,
   Portal,
   ProjectNotes,
   ProjectPhotos,
@@ -19,6 +18,7 @@ import {
   ProjectProposals,
   ProjectDrawings,
   Users,
+  Settings,
 } from './pages';
 import {
   ProjectStatusesPage,
@@ -30,6 +30,7 @@ import {
   AdminLanding,
   PortalCopyPage,
   DashboardViewsPage,
+  IntegrationsPage,
 } from './components/admin';
 import './index.css';
 
@@ -65,7 +66,8 @@ function App() {
           <Route path="/admin/request-types" element={<RequestTypesPage />} />
           <Route path="/admin/portal-copy" element={<PortalCopyPage />} />
           <Route path="/admin/dashboard-views" element={<DashboardViewsPage />} />
-          <Route path="/settings" element={<Placeholder />} />
+          <Route path="/admin/integrations" element={<IntegrationsPage />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Router>

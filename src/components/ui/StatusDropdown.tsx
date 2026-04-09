@@ -8,6 +8,8 @@ interface StatusDropdownProps {
   onChange: (value: string) => void;
   size?: 'sm' | 'md';
   statusType?: 'project' | 'customer';
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 export const StatusDropdown: React.FC<StatusDropdownProps> = ({
@@ -16,6 +18,8 @@ export const StatusDropdown: React.FC<StatusDropdownProps> = ({
   onChange,
   size = 'md',
   statusType = 'project',
+  disabled = false,
+  disabledReason,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -58,17 +62,25 @@ export const StatusDropdown: React.FC<StatusDropdownProps> = ({
     <div className="relative" ref={dropdownRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`inline-flex items-center font-medium rounded-full transition-opacity cursor-pointer whitespace-nowrap hover:opacity-80 ${sizeClasses}`}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        title={disabled ? disabledReason : undefined}
+        className={`inline-flex items-center font-medium rounded-full transition-opacity whitespace-nowrap ${sizeClasses} ${
+          disabled
+            ? 'cursor-not-allowed opacity-60'
+            : 'cursor-pointer hover:opacity-80'
+        }`}
         style={{
           backgroundColor: currentStatusConfig?.bgColor || defaultBg,
           color: currentStatusConfig?.textColor || defaultText,
         }}
       >
         {currentStatusConfig?.name || value}
-        <svg className={iconSize} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        {!disabled && (
+          <svg className={iconSize} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        )}
       </button>
 
       {isOpen && (

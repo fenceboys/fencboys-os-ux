@@ -191,9 +191,9 @@ export const CustomerList: React.FC = () => {
   }));
 
   return (
-    <div className="flex gap-6">
+    <div className="flex gap-6 min-w-0">
       {/* Sidebar Filters */}
-      <Sidebar className="flex-shrink-0">
+      <Sidebar className="flex-shrink-0 sticky top-0 self-start">
         <SidebarSection title="Customer Status">
           {customerStatusOptions.map(status => {
             const count = customers.filter(c => c.status === status.value).length;
@@ -358,7 +358,7 @@ export const CustomerList: React.FC = () => {
       </Sidebar>
 
       {/* Main Content */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 overflow-hidden">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -380,7 +380,7 @@ export const CustomerList: React.FC = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-visible">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
           <Table<Customer>
             columns={[
               {
@@ -428,12 +428,36 @@ export const CustomerList: React.FC = () => {
                   const customerProjects = projects.filter(p => p.customerId === customer.id);
                   if (customerProjects.length === 0) return <span className="text-gray-400 text-sm">No projects</span>;
                   const latestProject = customerProjects[0];
+                  const isDisabled = customer.status !== 'active_project';
                   return (
                     <div onClick={(e) => e.stopPropagation()}>
                       <StatusDropdown
                         value={latestProject.status}
                         options={projectStatusDropdownOptions}
                         onChange={(value) => updateProject(latestProject.id, { status: value as ProjectStatus })}
+                        disabled={isDisabled}
+                        disabledReason="Customer status must be 'Active Project' to change project status"
+                      />
+                    </div>
+                  );
+                },
+              },
+              {
+                key: 'portal',
+                header: 'Customer Portal',
+                render: (customer) => {
+                  const customerProjects = projects.filter(p => p.customerId === customer.id);
+                  if (customerProjects.length === 0) return <span className="text-gray-400 text-sm">-</span>;
+                  const latestProject = customerProjects[0];
+                  return (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <PillDropdown
+                        options={[
+                          { value: 'open', label: 'Open', color: 'green' },
+                          { value: 'closed', label: 'Closed', color: 'red' },
+                        ]}
+                        value={latestProject.portalLive ? 'open' : 'closed'}
+                        onChange={(value) => updateProject(latestProject.id, { portalLive: value === 'open' })}
                       />
                     </div>
                   );

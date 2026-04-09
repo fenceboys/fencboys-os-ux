@@ -1,59 +1,145 @@
-# Handoff Document - March 30, 2026
+# FenceBoys OS UX - Handoff Document
 
-## Current Issue
-`npm start` is not launching the dev server. User runs the command but nothing happens.
+**Last Updated:** April 8, 2026
+**Repository:** https://github.com/fenceboys/fencboys-os-ux
 
-## What Was Completed This Session
+---
 
-### 1. Portal Status Views - All 22 statuses now have custom views
-All statuses in `src/components/portal/StatusContent.tsx` were updated with:
-- Custom icon/logo for each status
-- Proper title and description
-- Relevant content cards with checklists
-- CTA buttons where applicable
-- **Contact buttons (Call/Text/Email) added to EVERY status** via `renderContactButtons()` helper function
+## Project Overview
 
-### 2. Fence Boys Logo Added
-- Copied `FB Logo.jpg` from Downloads to `/public/fence-boys-logo.jpg`
-- Used on `building_proposal`, `requesting_review`, and `complete` statuses
+FenceBoys OS is an internal operations system for a fence installation business. It manages the full customer journey from lead capture through project completion, including:
 
-### 3. Files Modified
-- `src/components/portal/StatusContent.tsx` - Major updates, added all status views + contact buttons
-- `public/fence-boys-logo.jpg` - Added logo file
-- `CLAUDE.md` - Created with dev server instructions
+- Customer/Lead management
+- Project tracking (pre-sale and post-sale)
+- Proposals, documents, photos
+- Customer portal
+- Admin configuration
 
-## Status Views Implemented
-1. `new_lead` - Calendly booking widget
-2. `quote_scheduled` - Appointment confirmation with date/time
-3. `building_proposal` - FB logo + "Thanks for Meeting" + next steps
-4. `proposal_sent` - "Your Proposal is Ready" + Review & Sign CTA
-5. `awaiting_deposit` - "Contract Signed" + Pay Deposit CTA
-6. `permit_preparation` - "Preparing Your Permit" with progress
-7. `customer_docs_needed` - "Documents Needed" + Upload CTA
-8. `permit_submitted` - "Permit Submitted" waiting for city
-9. `permit_revision_needed` - "Making Revisions"
-10. `permit_resubmitted` - "Permit Resubmitted"
-11. `ready_to_order_materials` - "Permit Approved!"
-12. `materials_ordered` - "Materials Ordered" with delivery progress
-13. `scheduling_installation` - "Materials Have Arrived"
-14. `installation_scheduled` - Date display with prep checklist
-15. `installation_delayed` - Delay notice
-16. `installation_in_progress` - Animated building indicator
-17. `scheduling_walkthrough` - "Installation Complete"
-18. `walkthrough_scheduled` - Walkthrough confirmation
-19. `fixes_needed` - "Addressing Your Concerns"
-20. `final_payment_due` - Pay Final Balance CTA
-21. `requesting_review` - FB logo + Leave Review CTA
-22. `complete` - FB logo + warranty info
+---
 
-## To Debug npm start Issue
-1. Check if port 3000 is in use: `lsof -i :3000`
-2. Kill any existing node processes: `pkill -f node`
-3. Try `npm start` again
-4. Check for errors in terminal output
-5. Try `npm install` if dependencies are missing
+## Recent Changes (This Session)
 
-## Next Steps After Fix
-- Test each status view in the portal
-- User wanted to review each status one-by-one
-- May need to adjust styling/content based on feedback
+### Status Management
+- **Separated Customer Status (pre-sale) from Project Status (post-sale)**
+  - `CustomerStatus` - tracks lead journey: new_lead → contacted → quote_scheduled → proposal_sent → awaiting_deposit
+  - `ProjectStatus` - tracks post-sale: permit_preparation → materials_ordered → installation_scheduled → complete
+
+- **Added Status Trigger field** (`src/types/index.ts`)
+  - `StatusTrigger` type: `'manual' | 'calendly_scheduled' | 'portal_signed' | 'deposit_paid' | 'final_payment_paid'`
+  - Allows configuring automatic vs manual status transitions
+  - Customer statuses can use all triggers; Project statuses only use `manual` and `final_payment_paid`
+
+### Admin Dashboard
+- **Split Project Tracking views** into separate Pre-Sale and Post-Sale configurations (`DashboardViewsPage.tsx`)
+- **Renamed "Project Phases" to "Project Statuses"** in admin
+- **Removed "All" tab** from project tracking - only Pre-Sale and Post-Sale tabs remain
+- **Salesperson dropdown** moved to left side of header, hidden in post-sale view
+- **Post-sale filter** only shows customers with `active_project` status
+
+### Tools Pages (`ToolsLanding.tsx`)
+- **Proposals:** Removed status tabs (Draft/Sent/Accepted) from header, removed status badges from cards and modals
+- **Documents:** Removed Status column, made category pill larger, improved table spacing
+
+### UI Fixes (`Dropdown.tsx`)
+- Fixed dropdown positioning (removed `window.scrollY`/`scrollX` for fixed positioning)
+- Fixed dropdown width (use exact `width` instead of `minWidth`)
+- Added `truncate` class to menu items
+
+---
+
+## Key Files & Architecture
+
+### Types (`src/types/index.ts`)
+- `CustomerStatus` - Pre-sale lead journey statuses
+- `ProjectStatus` - Post-sale project statuses
+- `StatusTrigger` - Automatic trigger types
+- `CustomerStatusConfig` / `ProjectStatusConfig` - Admin-configurable status settings
+- `Customer`, `Project`, `Proposal`, `Document`, `Photo`, `Payment` - Core entities
+
+### Components Structure
+```
+src/components/
+├── admin/           # Admin configuration pages
+│   ├── CustomerStatusPage.tsx
+│   ├── ProjectStatusesPage.tsx
+│   ├── DashboardViewsPage.tsx
+│   ├── StatusEditModal.tsx
+│   └── CustomerStatusEditModal.tsx
+├── dashboard/       # Main dashboards
+│   ├── AdminDashboard.tsx    # Project tracking table
+│   ├── SalesDashboard.tsx    # Sales pipeline view
+│   └── ProjectsTable.tsx     # Reusable projects table
+├── customers/       # Customer management
+├── projects/        # Project detail & tools
+│   └── tools/       # ProposalsTool, DocumentsTool, etc.
+├── portal/          # Customer-facing portal
+├── tools/           # Top-level tools landing
+│   └── ToolsLanding.tsx
+└── ui/              # Reusable UI components
+    ├── Dropdown.tsx
+    ├── StatusDropdown.tsx
+    └── PillDropdown.tsx
+```
+
+### Data Context (`src/context/DataContext.tsx`)
+- Central state management for all entities
+- CRUD operations for customers, projects, proposals, etc.
+- Status config management
+
+---
+
+## Status Flow
+
+### Pre-Sale (CustomerStatus)
+```
+new_lead → contact_attempted → contacted → needs_qualifying → quote_scheduled
+→ building_proposal → proposal_sent → awaiting_deposit → [DEPOSIT PAID] → active_project
+```
+
+### Post-Sale (ProjectStatus)
+```
+not_started → permit_preparation → permit_submitted → ready_to_order_materials
+→ materials_ordered → installation_scheduled → installation_in_progress
+→ walkthrough_scheduled → final_payment_due → [FINAL PAYMENT] → complete
+```
+
+---
+
+## Admin Configuration
+
+Admins can configure:
+- **Customer Statuses** - Pre-sale journey steps, colors, triggers, notifications
+- **Project Statuses** - Post-sale phases, colors, triggers, notifications
+- **Dashboard Views** - Column visibility for Sales Dashboard, Admin Dashboard, Pre-Sale Tracking, Post-Sale Tracking
+- **Portal Copy** - Customer-facing text for each status
+- **Request Types** - Build, Replace, Repair configurations
+
+---
+
+## Known Considerations
+
+1. **Legacy status values** exist in types for backward compatibility (e.g., `'lead'`, `'active'`, `'won'`)
+2. **Mock data** in `src/data/mockData.ts` - replace with real API calls
+3. **Portal** at `src/pages/Portal.tsx` - customer-facing view keyed by project status
+4. **Dropdown positioning** uses `fixed` positioning with portal rendering to escape overflow containers
+
+---
+
+## Running the Project
+
+```bash
+cd /Users/camerongribbons/fencboys-os-ux
+npm install
+npm start
+```
+
+Dev server runs at `http://localhost:3000`
+
+---
+
+## Git Status
+
+- **Branch:** main
+- **Remote:** https://github.com/fenceboys/fencboys-os-ux.git
+- **Last commit:** 3d677aa - "Improve admin tools, dashboard UI, and status management"
+- All changes pushed to remote

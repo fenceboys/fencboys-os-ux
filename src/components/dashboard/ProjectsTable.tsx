@@ -126,15 +126,21 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     {
       key: 'status',
       header: 'Project Status',
-      render: (project: Project) => (
-        <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-          <StatusDropdown
-            value={project.status}
-            options={statusOptions}
-            onChange={(value) => updateProject(project.id, { status: value as ProjectStatus })}
-          />
-        </div>
-      ),
+      render: (project: Project) => {
+        const customer = getCustomerById(project.customerId);
+        const isDisabled = customer?.status !== 'active_project';
+        return (
+          <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <StatusDropdown
+              value={project.status}
+              options={statusOptions}
+              onChange={(value) => updateProject(project.id, { status: value as ProjectStatus })}
+              disabled={isDisabled}
+              disabledReason="Customer status must be 'Active Project' to change project status"
+            />
+          </div>
+        );
+      },
     },
     {
       key: 'portal',

@@ -144,6 +144,7 @@ export const ToolCards: React.FC<ToolCardsProps> = ({ projectId }) => {
   const [newNoteContent, setNewNoteContent] = useState('');
   const [installationDate, setInstallationDate] = useState('');
   const [walkthroughDate, setWalkthroughDate] = useState('');
+  const [quoteAppointmentDate, setQuoteAppointmentDate] = useState('');
 
   const project = getProjectById(projectId);
   const drawings = getDrawingsByProjectId(projectId);
@@ -189,22 +190,73 @@ export const ToolCards: React.FC<ToolCardsProps> = ({ projectId }) => {
     }
   };
 
+  // Convert ISO date string to datetime-local format in EST
+  const isoToDatetimeLocal = (isoString: string): string => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    // Format for datetime-local input (YYYY-MM-DDTHH:mm)
+    const estDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const year = estDate.getFullYear();
+    const month = String(estDate.getMonth() + 1).padStart(2, '0');
+    const day = String(estDate.getDate()).padStart(2, '0');
+    const hours = String(estDate.getHours()).padStart(2, '0');
+    const minutes = String(estDate.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Convert datetime-local value to ISO string (treating input as EST)
+  const datetimeLocalToISO = (datetimeLocal: string): string => {
+    if (!datetimeLocal) return '';
+    // Parse the datetime-local value and treat it as EST
+    const [datePart, timePart] = datetimeLocal.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hours, minutes] = timePart.split(':').map(Number);
+    // Create date in EST timezone
+    const estDateStr = `${month}/${day}/${year} ${hours}:${minutes}:00`;
+    const date = new Date(new Date(estDateStr).toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    // Adjust for EST offset
+    const utcDate = new Date(Date.UTC(year, month - 1, day, hours + 5, minutes)); // EST is UTC-5 (or UTC-4 for EDT)
+    return utcDate.toISOString();
+  };
+
+  // Format date for display in EST
+  const formatDateTimeEST = (isoString: string): string => {
+    if (!isoString) return '';
+    return new Date(isoString).toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }) + ' EST';
+  };
+
   const handleScheduleClick = () => {
-    // Initialize with existing dates if available
-    setInstallationDate(project?.installationDate ? project.installationDate.split('T')[0] : '');
-    setWalkthroughDate(project?.walkthroughDate ? project.walkthroughDate.split('T')[0] : '');
+    // Initialize with existing dates if available (convert to datetime-local format)
+    setInstallationDate(project?.installationDate ? isoToDatetimeLocal(project.installationDate) : '');
+    setWalkthroughDate(project?.walkthroughDate ? isoToDatetimeLocal(project.walkthroughDate) : '');
+    setQuoteAppointmentDate(project?.salesAppointment ? isoToDatetimeLocal(project.salesAppointment) : '');
     setScheduleModalOpen(true);
   };
 
   const handleSaveInstallationDate = () => {
     if (installationDate) {
-      updateProject(projectId, { installationDate: new Date(installationDate).toISOString() });
+      updateProject(projectId, { installationDate: datetimeLocalToISO(installationDate) });
     }
   };
 
   const handleSaveWalkthroughDate = () => {
     if (walkthroughDate) {
-      updateProject(projectId, { walkthroughDate: new Date(walkthroughDate).toISOString() });
+      updateProject(projectId, { walkthroughDate: datetimeLocalToISO(walkthroughDate) });
+    }
+  };
+
+  const handleSaveQuoteAppointmentDate = () => {
+    if (quoteAppointmentDate) {
+      updateProject(projectId, { salesAppointment: datetimeLocalToISO(quoteAppointmentDate) });
     }
   };
 
@@ -237,8 +289,14 @@ export const ToolCards: React.FC<ToolCardsProps> = ({ projectId }) => {
   };
 
   const formatAppointment = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    return new Date(dateStr).toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
   };
 
   const handleToolClick = (tool: typeof tools[0]) => {
@@ -553,6 +611,57 @@ export const ToolCards: React.FC<ToolCardsProps> = ({ projectId }) => {
                 </div>
               </div>
 
+              {/* Quote Appointment Date */}
+              <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900 text-sm">Quote Appointment</div>
+                      <div className="text-xs text-gray-500">On-site quote visit (EST)</div>
+                    </div>
+                  </div>
+                  {project?.salesAppointment && (
+                    <button
+                      onClick={() => updateProject(projectId, { salesAppointment: undefined })}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                      title="Remove date"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="datetime-local"
+                    value={quoteAppointmentDate}
+                    onChange={(e) => setQuoteAppointmentDate(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <button
+                    onClick={handleSaveQuoteAppointmentDate}
+                    disabled={!quoteAppointmentDate}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Save
+                  </button>
+                </div>
+                {project?.salesAppointment && (
+                  <div className="mt-2 text-xs text-green-600 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Currently set: {formatDateTimeEST(project.salesAppointment)}
+                  </div>
+                )}
+              </div>
+
               {/* Installation Date */}
               <div className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex items-center justify-between mb-3">
@@ -564,7 +673,7 @@ export const ToolCards: React.FC<ToolCardsProps> = ({ projectId }) => {
                     </div>
                     <div>
                       <div className="font-medium text-gray-900 text-sm">Installation Date</div>
-                      <div className="text-xs text-gray-500">Shows in customer portal</div>
+                      <div className="text-xs text-gray-500">Shows in customer portal (EST)</div>
                     </div>
                   </div>
                   {project?.installationDate && (
@@ -581,7 +690,7 @@ export const ToolCards: React.FC<ToolCardsProps> = ({ projectId }) => {
                 </div>
                 <div className="flex gap-2">
                   <input
-                    type="date"
+                    type="datetime-local"
                     value={installationDate}
                     onChange={(e) => setInstallationDate(e.target.value)}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
@@ -599,7 +708,7 @@ export const ToolCards: React.FC<ToolCardsProps> = ({ projectId }) => {
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    Currently set: {new Date(project.installationDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                    Currently set: {formatDateTimeEST(project.installationDate)}
                   </div>
                 )}
               </div>
@@ -615,7 +724,7 @@ export const ToolCards: React.FC<ToolCardsProps> = ({ projectId }) => {
                     </div>
                     <div>
                       <div className="font-medium text-gray-900 text-sm">Walkthrough Date</div>
-                      <div className="text-xs text-gray-500">Shows in customer portal</div>
+                      <div className="text-xs text-gray-500">Shows in customer portal (EST)</div>
                     </div>
                   </div>
                   {project?.walkthroughDate && (
@@ -632,7 +741,7 @@ export const ToolCards: React.FC<ToolCardsProps> = ({ projectId }) => {
                 </div>
                 <div className="flex gap-2">
                   <input
-                    type="date"
+                    type="datetime-local"
                     value={walkthroughDate}
                     onChange={(e) => setWalkthroughDate(e.target.value)}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
@@ -650,7 +759,7 @@ export const ToolCards: React.FC<ToolCardsProps> = ({ projectId }) => {
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    Currently set: {new Date(project.walkthroughDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                    Currently set: {formatDateTimeEST(project.walkthroughDate)}
                   </div>
                 )}
               </div>

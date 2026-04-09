@@ -75,7 +75,7 @@ interface DataContextType {
 
   // Project actions
   addProject: (project: Omit<Project, 'id' | 'createdAt'>) => Project;
-  updateProject: (id: string, updates: Partial<Project>) => void;
+  updateProject: (id: string, updates: Partial<Project>, options?: { skipCustomerCheck?: boolean }) => void;
   deleteProject: (id: string) => void;
 
   // Note actions
@@ -283,7 +283,27 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return newProject;
   };
 
-  const updateProject = (id: string, updates: Partial<Project>) => {
+  const updateProject = (id: string, updates: Partial<Project>, options?: { skipCustomerCheck?: boolean }) => {
+    // If updating project status, check that customer status is 'active_project'
+    // Exception: 'not_started' can always be set (it's a reset state for pre-sale customers)
+    // Exception: skipCustomerCheck bypasses this (used when updating customer status in same batch)
+    if (updates.status !== undefined && updates.status !== 'not_started' && !options?.skipCustomerCheck) {
+      const project = projects.find(p => p.id === id);
+      if (project) {
+        const customer = customers.find(c => c.id === project.customerId);
+        if (customer && customer.status !== 'active_project') {
+          console.warn('Cannot change project status: customer status must be "active_project"');
+          // Remove status from updates if customer isn't active_project
+          const { status, statusChangedAt, ...allowedUpdates } = updates;
+          if (Object.keys(allowedUpdates).length > 0) {
+            setProjects((prev) =>
+              prev.map((p) => (p.id === id ? { ...p, ...allowedUpdates } : p))
+            );
+          }
+          return;
+        }
+      }
+    }
     setProjects((prev) =>
       prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
     );

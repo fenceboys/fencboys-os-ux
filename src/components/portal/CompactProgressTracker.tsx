@@ -142,7 +142,7 @@ export const CompactProgressTracker: React.FC<CompactProgressTrackerProps> = ({ 
         }
       `}</style>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-6 py-8 overflow-hidden">
         {/* Circles and connecting lines */}
         <div className="flex items-center justify-between">
           {stages.map((stage, index) => {

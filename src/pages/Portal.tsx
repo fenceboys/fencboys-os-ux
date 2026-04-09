@@ -210,22 +210,30 @@ export const Portal: React.FC = () => {
   const contactInfo = getContactInfo();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col overflow-x-hidden">
       {/* Header */}
-      <header className="bg-[#2563EB] text-white">
-        <div className="max-w-4xl mx-auto px-4 py-2">
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-7 h-7 bg-white rounded flex items-center justify-center flex-shrink-0">
-              <span className="text-[#2563EB] font-bold text-xs">FB</span>
-            </div>
-            <span className="font-bold">Fence Boys</span>
+      <header className="bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex flex-col items-center">
+            <img
+              src="/fence-boys-logo.jpg"
+              alt="Fence Boys"
+              className="h-20 object-contain"
+            />
+            <span className="text-lg font-semibold text-gray-700">Customer Portal</span>
           </div>
         </div>
       </header>
 
       {/* Compact Progress Tracker */}
       <div className="mt-6">
-        <CompactProgressTracker status={project.status} />
+        <CompactProgressTracker
+          status={
+            customer && (isPreSale(customer.status) || customer.status === 'quote_expired' || customer.status === 'lost')
+              ? customer.status as any
+              : project.status
+          }
+        />
       </div>
 
       {/* Main Content - Centered Tabs */}
@@ -399,8 +407,9 @@ export const Portal: React.FC = () => {
                       updateProject(project.id, { status: 'not_started' as ProjectStatus });
                     } else if (type === 'project' && customer) {
                       // Post-sale: set customer to active_project and update project status
+                      // Use skipCustomerCheck because we're updating customer in the same batch
                       updateCustomer(customer.id, { status: 'active_project' });
-                      updateProject(project.id, { status: status as ProjectStatus });
+                      updateProject(project.id, { status: status as ProjectStatus }, { skipCustomerCheck: true });
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -435,42 +444,43 @@ export const Portal: React.FC = () => {
                 {/* Prev/Next Buttons */}
                 {(() => {
                   // Build combined list of all testable statuses
-                  const preSaleStatuses = customerStatuses
+                  const preSaleStatusList = customerStatuses
                     .filter(s => {
                       const config = customerStatusConfigs.find(c => c.name === s.label);
                       return config?.hasPortalPage === true;
                     })
-                    .sort((a, b) => a.sortOrder - b.sortOrder)
-                    .map(s => ({ type: 'customer', id: s.id, label: s.label }));
+                    .sort((a, b) => a.sortOrder - b.sortOrder);
 
-                  const postSaleStatuses = projectStatuses
-                    .filter(s => s.id !== 'not_started')
-                    .map(s => ({ type: 'project', id: s.id, label: s.label }));
+                  const postSaleStatusList = projectStatuses.filter(s => s.id !== 'not_started');
 
-                  const allStatuses = [...preSaleStatuses, ...postSaleStatuses];
+                  const allStatuses = [
+                    ...preSaleStatusList.map(s => ({ type: 'customer' as const, id: s.id })),
+                    ...postSaleStatusList.map(s => ({ type: 'project' as const, id: s.id }))
+                  ];
 
                   // Find current index
                   const currentValue = customer && (isPreSale(customer.status) || customer.status === 'quote_expired' || customer.status === 'lost')
-                    ? `customer:${customer.status}`
-                    : `project:${project.status}`;
-                  const [currentType, currentId] = currentValue.split(':');
-                  const currentIndex = allStatuses.findIndex(s => s.type === currentType && s.id === currentId);
+                    ? { type: 'customer' as const, id: customer.status }
+                    : { type: 'project' as const, id: project.status };
+
+                  const currentIndex = allStatuses.findIndex(s => s.type === currentValue.type && s.id === currentValue.id);
 
                   const goToStatus = (index: number) => {
-                    const status = allStatuses[index];
-                    if (!status || !customer) return;
+                    if (!customer || !project || index < 0 || index >= allStatuses.length) return;
 
-                    if (status.type === 'customer') {
-                      updateCustomer(customer.id, { status: status.id as CustomerStatus });
+                    const target = allStatuses[index];
+
+                    if (target.type === 'customer') {
+                      updateCustomer(customer.id, { status: target.id as CustomerStatus });
                       updateProject(project.id, { status: 'not_started' as ProjectStatus });
                     } else {
-                      updateCustomer(customer.id, { status: 'active_project' });
-                      updateProject(project.id, { status: status.id as ProjectStatus });
+                      updateCustomer(customer.id, { status: 'active_project' as CustomerStatus });
+                      updateProject(project.id, { status: target.id as ProjectStatus }, { skipCustomerCheck: true });
                     }
                   };
 
                   return (
-                    <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center justify-between mt-3">
                       <button
                         onClick={() => goToStatus(currentIndex - 1)}
                         disabled={currentIndex <= 0}
@@ -486,7 +496,7 @@ export const Portal: React.FC = () => {
                       </span>
                       <button
                         onClick={() => goToStatus(currentIndex + 1)}
-                        disabled={currentIndex >= allStatuses.length - 1}
+                        disabled={currentIndex < 0 || currentIndex >= allStatuses.length - 1}
                         className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         Next

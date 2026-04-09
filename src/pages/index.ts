@@ -15,3 +15,4 @@ export { ProjectPayments } from './ProjectPayments';
 export { ProjectProposals } from './ProjectProposals';
 export { ProjectDrawings } from './ProjectDrawings';
 export { Users } from './Users';
+export { Settings } from './Settings';
